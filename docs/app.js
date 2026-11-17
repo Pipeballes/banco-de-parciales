@@ -130,8 +130,9 @@
     const profes = new Set(state.docs.map((d) => d.materia + "|" + d.profesor)).size;
     const parciales = state.docs.filter((d) => d.tipo === "Parcial").length;
     $("#stats").innerHTML = [
-      [state.docs.length, "documentos"], [parciales, "parciales"], [materias, "materias"], [profes, "profesores"],
-    ].map(([n, l]) => `<span class="stat"><b>${n}</b> ${l}</span>`).join("");
+      [state.docs.length, "documento", "documentos"], [parciales, "parcial", "parciales"],
+      [materias, "materia", "materias"], [profes, "profesor", "profesores"],
+    ].map(([n, uno, varios]) => `<span class="stat"><b>${n}</b> ${n === 1 ? uno : varios}</span>`).join("");
   }
 
   function render() { renderSidebar(); renderCrumbs(); renderGrid(); }

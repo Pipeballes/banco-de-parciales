@@ -1,4 +1,16 @@
 {
-  "generado": "2026-11-17T17:31:15+00:00",
-  "documentos": []
+  "generado": "2026-11-17T17:35:38+00:00",
+  "documentos": [
+    {
+      "id": "base-de-datos-y-estructura-de-datos-i-maria-blanco-parcial-1-2026",
+      "titulo": "Parcial 1 2026",
+      "materia": "Base de Datos y Estructura de Datos I",
+      "profesor": "María Blanco",
+      "tipo": "Parcial",
+      "paginas": 1,
+      "tamano": 90180,
+      "archivo": "archivos/base-de-datos-y-estructura-de-datos-i/maria-blanco/parcial-1-2026.pdf",
+      "fecha": "2026-11-17"
+    }
+  ]
 }
