@@ -25,13 +25,13 @@ María Blanco:
   comentario:
 
 Juan la Cruz Valladares:
-  general:
+  general: recomendado
   materias:
     Álgebra:
   comentario:
 
 Jorge Echevarria:
-  general:
+  general: recomendado
   materias:
     Arquitectura de Computadoras:
   comentario:
@@ -49,13 +49,158 @@ Fernando Bolado:
   comentario:
 
 Angela Pierina Lanza:
-  general:
+  general: recomendado
   materias:
     Análisis Matemático I:
   comentario:
 
-Rabuch:
-  general:
+Javier Rabuch:
+  general: recomendado
   materias:
     Análisis de Sistemas:
   comentario:
+
+Javier Francario:
+  general:
+  materias:
+    Física: recomendado
+    Matemática: no recomendado
+  comentario: Recomendado para Física, no para Matemática.
+
+Ana Leyes:
+  general: recomendado
+  materias: {}
+  comentario:
+
+Guillermo:
+  general:
+  materias:
+    Computación Aplicada: recomendado
+  comentario:
+
+Ignacio Ziccardi:
+  general: recomendado
+  materias: {}
+  comentario:
+
+María Abeledo:
+  general: recomendado
+  materias: {}
+  comentario:
+
+Francisco de Paoli:
+  general: recomendado
+  materias: {}
+  comentario:
+
+Claudio Alberto Schifer:
+  general: recomendado
+  materias: {}
+  comentario:
+
+Adriana la Torre:
+  general: recomendado
+  materias: {}
+  comentario:
+
+María Cabello:
+  general: recomendado
+  materias: {}
+  comentario:
+
+Juan Novas:
+  general: recomendado
+  materias: {}
+  comentario:
+
+Ricardo Cantelmi:
+  general: recomendado
+  materias: {}
+  comentario:
+
+Peter Bauman:
+  general: recomendado
+  materias: {}
+  comentario:
+
+Filippo Comandini:
+  general: recomendado
+  materias: {}
+  comentario:
+
+Arzubi:
+  general: recomendado
+  materias: {}
+  comentario:
+
+Ian Bellet Hernández:
+  general:
+  materias:
+    Análisis Matemático II: recomendado
+  comentario:
+
+Delfina Mía Luna:
+  general: no recomendado
+  materias: {}
+  comentario:
+
+Agustina Jurgiel:
+  general: no recomendado
+  materias:
+    Introducción a la Programación:
+  comentario:
+
+Marcela Toba:
+  general: no recomendado
+  materias: {}
+  comentario:
+
+Martin Acosta:
+  general: no recomendado
+  materias: {}
+  comentario:
+
+Luciano Pacheco:
+  general: no recomendado
+  materias: {}
+  comentario:
+
+Fabio Dellarosa:
+  general: no recomendado
+  materias: {}
+  comentario:
+
+Fabio Bruschetti:
+  general: no recomendado
+  materias: {}
+  comentario:
+
+Mercedes Blanco:
+  general: no recomendado
+  materias: {}
+  comentario:
+
+Laura Lazzati:
+  general: no recomendado
+  materias: {}
+  comentario:
+
+Guillermo Puyau:
+  general: no recomendado
+  materias: {}
+  comentario:
+
+Elba Fuertes:
+  general: neutro
+  materias: {}
+  comentario: Neutro, tirando a recomendable.
+
+Agustina Brizio:
+  general: neutro
+  materias: {}
+  comentario: Neutro, tirando a no recomendable.
+
+María Carmona:
+  general: neutro
+  materias: {}
+  comentario: Neutro, tirando a recomendable.
