@@ -108,12 +108,14 @@ select { border: 1px solid var(--border); background: var(--surface); color: var
 .badge.Recuperatorio { background: var(--recu-bg); color: var(--recu); }
 .badge.Final { background: var(--final-bg); color: var(--final); }
 
-/* Secciones dentro de una materia */
-.section { margin-bottom: 28px; }
-.section > h2 { font-size: 20px; margin: 0 0 12px; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
-.section > h2 .count { font-size: 13px; }
-.subsection { margin-bottom: 18px; }
-.subsection > h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+/* Dentro de una materia: Año → Parciales/Recuperatorios → 1er/2do */
+.year { margin-bottom: 36px; }
+.year-title { font-size: 26px; letter-spacing: -.02em; margin: 0 0 14px; padding-bottom: 8px;
+  border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.section { margin-bottom: 22px; }
+.section > h3 { font-size: 18px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+.subsection { margin-bottom: 16px; }
+.subsection > h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
 .meta { font-size: 13px; color: var(--muted); }
 .meta div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .actions { display: flex; gap: 8px; margin-top: auto; align-items: center; }

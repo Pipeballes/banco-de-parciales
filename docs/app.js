@@ -90,16 +90,26 @@
       (!state.materia || d.materia === state.materia) &&
       (!state.profesor || d.profesor === state.profesor) &&
       (!state.tipo || d.tipo === state.tipo) &&
-      (!q || norm(`${d.titulo} ${d.materia} ${d.profesor} ${d.tipo}`).includes(q)));
+      (!q || norm(`${d.titulo} ${d.materia} ${d.profesor} ${d.tipo} ${d.anio || ""}`).includes(q)));
     const st = (d, k) => (state.stats[d.id] || {})[k] || 0;
     const sorters = {
-      recientes: (a, b) => b.fecha.localeCompare(a.fecha),
+      recientes: (a, b) => cuando(b).localeCompare(cuando(a)),
       likes: (a, b) => st(b, "likes") - st(a, "likes"),
       descargas: (a, b) => st(b, "descargas") - st(a, "descargas"),
       nombre: (a, b) => a.titulo.localeCompare(b.titulo, "es", { numeric: true }),
     };
     return list.sort(sorters[state.sort]);
   }
+
+  // Fecha del examen para mostrar: "15/04/2026", "16/09" o solo el año
+  function fechaTexto(d) {
+    const f = d.fecha_examen;
+    if (f && f.length === 10) return `${f.slice(8)}/${f.slice(5, 7)}/${f.slice(0, 4)}`;
+    if (f) return `${f.slice(3)}/${f.slice(0, 2)}${d.anio ? "/" + d.anio : ""}`;
+    return d.anio ? String(d.anio) : "";
+  }
+  // Clave para ordenar por fecha del examen (y si no hay, por fecha de subida)
+  const cuando = (d) => `${d.anio || "0000"}-${(d.fecha_examen || "").slice(-5) || "00-00"}|${d.subido || ""}`;
 
   function card(d) {
     const s = state.stats[d.id] || {};
@@ -108,7 +118,8 @@
       <div class="card-top"><h3>${esc(d.titulo)}</h3><span class="badge ${esc(d.tipo)}">${esc(d.tipo)}</span></div>
       <div class="meta">
         <div>📘 ${esc(d.materia)}</div>
-        <div>👤 ${esc(d.profesor)}</div>
+        <div>👤 ${d.profesor === "??" ? '<span title="Profesor desconocido">??</span>' : esc(d.profesor)}</div>
+        ${fechaTexto(d) ? `<div>📅 ${esc(fechaTexto(d))}</div>` : ""}
         <div>📄 ${d.paginas ? d.paginas + " pág. · " : ""}${size(d.tamano)}${s.descargas ? ` · ⬇ ${s.descargas}` : ""}</div>
       </div>
       <div class="actions">
@@ -126,7 +137,8 @@
   ];
   const ordinal = (n) => ({ 1: "1er", 2: "2do", 3: "3er", 4: "4to" }[n] || n + "°");
 
-  function grouped(list) {
+  // Una sección por tipo (Parciales, Recuperatorios…), con subsecciones 1er / 2do
+  function porTipo(list) {
     return SECCIONES.map(([tipo, titulo, singular]) => {
       const docs = list.filter((d) => d.tipo === tipo);
       if (!docs.length) return "";
@@ -137,12 +149,24 @@
         body = nums.map((n) => {
           const sub = docs.filter((d) => (d.numero ?? null) === n);
           const label = n === null ? (conNumero ? `${titulo} (sin número)` : "") : `${ordinal(n)} ${singular}`;
-          return `<div class="subsection">${label ? `<h3>${esc(label)}</h3>` : ""}<div class="grid">${sub.map(card).join("")}</div></div>`;
+          return `<div class="subsection">${label ? `<h4>${esc(label)}</h4>` : ""}<div class="grid">${sub.map(card).join("")}</div></div>`;
         }).join("");
       } else {
         body = `<div class="grid">${docs.map(card).join("")}</div>`;
       }
-      return `<section class="section"><h2>${titulo} <span class="count">${docs.length}</span></h2>${body}</section>`;
+      return `<section class="section"><h3>${titulo} <span class="count">${docs.length}</span></h3>${body}</section>`;
+    }).join("");
+  }
+
+  // Dentro de una materia: primero por año (el más nuevo arriba, "Sin fecha" al final)
+  function grouped(list) {
+    const anios = [...new Set(list.map((d) => d.anio ?? null))].sort((a, b) => (b ?? -1) - (a ?? -1));
+    return anios.map((anio) => {
+      const docs = list.filter((d) => (d.anio ?? null) === anio);
+      return `<section class="year">
+        <h2 class="year-title">${anio ?? "Sin fecha"} <span class="count">${docs.length}</span></h2>
+        ${porTipo(docs)}
+      </section>`;
     }).join("");
   }
 

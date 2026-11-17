@@ -1,11 +1,11 @@
 name: Convertir fotos y publicar
 
-# Cada vez que subís fotos a la carpeta fotos/, esto las convierte a PDF,
-# actualiza la página y la publica en GitHub Pages.
+# Cada vez que se sube algo a parciales/: convierte las fotos a PDF (y borra las
+# imágenes), arma la página y la publica en GitHub Pages.
 on:
   push:
     branches: [main]
-    paths: ["fotos/**", "docs/**", "scripts/**", ".github/workflows/**"]
+    paths: ["parciales/**", "docs/**", "scripts/**", ".github/workflows/**"]
   workflow_dispatch:
 
 permissions:
@@ -35,15 +35,15 @@ jobs:
       - name: Instalar dependencias
         run: pip install pillow pillow-heif
 
-      - name: Convertir fotos a PDF
+      - name: Convertir fotos a PDF y armar la página
         run: python scripts/build.py
 
-      - name: Guardar los PDF generados en el repo
+      - name: Guardar en el repo los PDF que salieron de fotos
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/
-          git diff --cached --quiet || git commit -m "Generar PDFs y data.json [skip ci]"
+          git add -A parciales/
+          git diff --cached --quiet || git commit -m "Convertir fotos a PDF [skip ci]"
           git push
 
       - uses: actions/configure-pages@v5

@@ -31,7 +31,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 ## 🎓 Qué vas a encontrar
 
 - **Parciales, recuperatorios, finales y apuntes**, organizados por **materia → profesor**.
-- Dentro de cada materia, todo separado en secciones: **1er Parcial, 2do Parcial, 1er Recuperatorio, 2do Recuperatorio, Finales y Apuntes**.
+- Dentro de cada materia, todo separado **por año** y, adentro, en **1er / 2do Parcial, 1er / 2do Recuperatorio, Finales y Apuntes**, con la fecha de cada examen.
 - **Vista previa** desde el celular o la compu, y **descarga en PDF** con un toque.
 - **Buscador** por materia, profesor o tema, y **likes** para ver qué es lo que más le sirvió a la gente.
 
@@ -44,7 +44,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 ¡Genial! Cuantos más haya, más gente ayudamos.
 
 1. Sacales foto con buena luz, que se lea bien la letra. Si podés, mandá la foto original del celular y no la de WhatsApp, que pierde calidad.
-2. Decime **materia**, **profesor** y si es **parcial, recuperatorio, final o apunte** (y qué número: 1er, 2do…).
+2. Decime **materia**, **profesor**, **fecha del examen** y si es **parcial, recuperatorio, final o apunte** (y qué número: 1er, 2do…).
 3. Mandámelas abriendo un [**Issue acá en GitHub**](https://github.com/Pipeballes/banco-de-parciales/issues/new) o por mensaje.
 
 > ⚠️ **No subas fotos con tu nombre a la vista.** Lo que se sube a GitHub queda en el historial aunque después se borre. Mandámelas y yo me encargo de taparlo antes de publicarlas.
@@ -56,23 +56,26 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 
 <br>
 
-La página se arma sola a partir de la carpeta [`fotos/`](fotos/). Cada vez que se sube algo, una GitHub Action convierte las fotos a PDF y publica la página (tarda 1–2 minutos).
+La página se arma sola a partir de la carpeta [`parciales/`](parciales/), donde **solo se guardan PDF**. Si se suben fotos, una GitHub Action las convierte a PDF, **borra las imágenes** y publica la página (tarda 1–2 minutos).
 
 ### Estructura de carpetas
 
 ```
-fotos/
-  Álgebra/                                  ← materia
-    Juan la Cruz Valladares/                ← profesor
-      Parcial 1 - Tema A/                   ← carpeta con varias fotos = 1 PDF de varias páginas
+parciales/
+  Álgebra/                                       ← materia
+    Juan la Cruz Valladares/                     ← profesor
+      Parcial 1 - Tema A (16-09-2025).pdf        ← fecha del examen entre paréntesis
+      Recuperatorio 2 (03-07-2025).pdf
+      2024/                                      ← o una carpeta con el año
+        Final.pdf
+      Parcial 2 (10-06-2026)/                    ← carpeta con fotos → se unen en 1 PDF y se borran
         01.jpg
         02.jpg
-      Parcial 1 - Tema B.jpg                ← foto suelta = PDF de 1 página
-      Recuperatorio 2 - 2025.jpg
-      Final 2024.pdf                        ← los PDF se suben tal cual
+    Sin profesor/                                ← profe desconocido → aparece como "??"
 ```
 
 - **¿No sabés quién es el profe?** Poné la foto suelta dentro de la materia, o en una carpeta `Sin profesor/`. En la página aparece con profesor **??**.
+- **La fecha va entre paréntesis** en el nombre: `(15-04-2026)`. De ahí sale el año para agrupar y la fecha que se muestra. Si no tiene fecha, aparece en **"Sin fecha"**.
 - Las fotos de una carpeta se unen **en orden alfabético** (`01.jpg`, `02.jpg`…).
 - La **sección** sale del nombre:
   - *Parcial 1*, *1er parcial*, *primer parcial* → **1er Parcial**
@@ -102,9 +105,9 @@ y abrí http://localhost:8000
 
 | Archivo | Qué hace |
 |---|---|
-| `fotos/` | Las fotos originales (ya con los datos personales tapados) |
+| `parciales/` | Los PDF (ya con los datos personales tapados) |
 | `scripts/build.py` | Convierte fotos a PDF, detecta secciones y revisa nombres |
-| `docs/` | La página web (lo que se publica) |
+| `docs/` | La página web (los PDF y `data.json` se generan al publicar) |
 | `.github/workflows/publicar.yml` | Publica la página automáticamente |
 | `supabase.sql` | Base de datos de likes y descargas |
 
