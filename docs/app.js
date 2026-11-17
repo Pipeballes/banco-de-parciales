@@ -153,16 +153,49 @@
     const dl = e.target.closest("[data-dl]");
     if (dl) { bump(dl.dataset.dl, "descargas", 1); return; }
     const view = e.target.closest("[data-view]");
-    if (view) {
-      const d = state.docs.find((x) => x.id === view.dataset.view);
-      $("#viewer-title").textContent = `${d.titulo} — ${d.profesor}`;
-      $("#viewer-frame").src = d.archivo;
-      const a = $("#viewer-dl"); a.href = d.archivo; a.dataset.dl = d.id;
-      $("#viewer").showModal();
-    }
+    if (view) openViewer(state.docs.find((x) => x.id === view.dataset.view));
   });
+
+  // ---------- Visor de PDF (PDF.js: funciona también en Android/iPhone) ----------
+  let pdfjsReady, viewToken = 0;
+  function loadPdfJs() {
+    return (pdfjsReady ||= new Promise((ok, fail) => {
+      const s = document.createElement("script");
+      s.src = "vendor/pdf.min.js";
+      s.onload = () => { pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdf.worker.min.js"; ok(pdfjsLib); };
+      s.onerror = fail;
+      document.head.appendChild(s);
+    }));
+  }
+  async function openViewer(d) {
+    const token = ++viewToken, box = $("#viewer-pages");
+    $("#viewer-title").textContent = `${d.titulo} — ${d.profesor}`;
+    const a = $("#viewer-dl"); a.href = d.archivo; a.dataset.dl = d.id;
+    box.innerHTML = `<p class="viewer-msg">Cargando…</p>`;
+    $("#viewer").showModal();
+    try {
+      const lib = await loadPdfJs();
+      const pdf = await lib.getDocument(d.archivo).promise;
+      if (token !== viewToken) return;
+      box.innerHTML = "";
+      const width = Math.min(box.clientWidth - 24, 900) * (window.devicePixelRatio || 1);
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        if (token !== viewToken) return;
+        const vp = page.getViewport({ scale: width / page.getViewport({ scale: 1 }).width });
+        const canvas = document.createElement("canvas");
+        canvas.width = vp.width; canvas.height = vp.height;
+        canvas.setAttribute("aria-label", `Página ${i} de ${pdf.numPages}`);
+        box.appendChild(canvas);
+        await page.render({ canvasContext: canvas.getContext("2d"), viewport: vp }).promise;
+      }
+    } catch (err) {
+      console.warn(err);
+      if (token === viewToken) box.innerHTML = `<p class="viewer-msg">No se pudo mostrar la vista previa.<br>Usá el botón Descargar.</p>`;
+    }
+  }
   $("#viewer-close").onclick = () => $("#viewer").close();
-  $("#viewer").addEventListener("close", () => { $("#viewer-frame").src = "about:blank"; });
+  $("#viewer").addEventListener("close", () => { viewToken++; $("#viewer-pages").innerHTML = ""; });
 
   $("#chips").addEventListener("click", (e) => {
     const c = e.target.closest(".chip"); if (!c) return;

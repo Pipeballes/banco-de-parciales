@@ -25,6 +25,8 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # para saber la fecha real en que se subió cada foto
 
       - uses: actions/setup-python@v5
         with:

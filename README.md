@@ -27,6 +27,20 @@ fotos/
 - Si el nombre tiene *parcial*, *final* o *examen* → aparece como **Parcial**. Si tiene *apunte*, *clase* o *resumen* → **Apunte**.
 - Se aceptan JPG, PNG, WEBP, HEIC (iPhone) y PDF. La rotación del celular se corrige sola.
 
+### ¿Cómo sé si los nombres quedaron bien?
+
+Cada vez que subís algo, GitHub revisa los nombres y te lo dice:
+
+1. Andá a la pestaña **Actions** del repo.
+2. Abrí la última ejecución de "Convertir fotos y publicar".
+3. Abajo vas a ver un resumen con todo lo publicado y, si hay algo raro, una lista **⚠️ para revisar**.
+
+Te avisa, por ejemplo, si:
+- escribiste el mismo profesor o materia de dos formas ("Perez" / "Pérez"). Se unifican solos, pero conviene renombrar;
+- una foto quedó suelta, sin carpeta de profesor;
+- una foto tiene un nombre genérico como `IMG_2023...` o `WhatsApp Image...`;
+- un archivo no dice si es parcial o apunte.
+
 Apenas subís algo, una GitHub Action convierte las fotos a PDF y actualiza la página (tarda 1–2 minutos).
 
 ## Publicar la página (una sola vez)
