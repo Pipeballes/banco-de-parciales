@@ -20,7 +20,7 @@
 
 ## 👋 Sobre mí
 
-¡Hola! Soy **Pipe**, estudiante de **Ingeniería en la Universidad de Palermo**.
+¡Hola! Soy **Felipe**, estudiante de **Ingeniería en la Universidad de Palermo**.
 
 Armé este banco porque sé lo que cuesta conseguir parciales viejos para practicar antes de un examen. **Mi objetivo es ayudar a la mayor cantidad de gente que esté en Ingeniería**: que cualquiera pueda entrar, encontrar el parcial de su materia y de su profesor, y llegar mejor preparado.
 
