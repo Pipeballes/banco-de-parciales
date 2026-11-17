@@ -3,7 +3,7 @@
   const REMOTE = Boolean(CFG.supabaseUrl && CFG.supabaseAnonKey);
   const $ = (s) => document.querySelector(s);
 
-  const state = { docs: [], profes: [], stats: {}, liked: load("liked", {}), materia: "", profesor: "", tipo: "", q: "", sort: "recientes", vista: "docs", profMateria: "" };
+  const state = { docs: [], profes: [], stats: {}, liked: load("liked", {}), materia: "", profesor: "", tipo: "", q: "", sort: "recientes", vista: "docs", profMateria: "", modo: load("modo", "lista") };
 
   function load(k, d) { try { return JSON.parse(localStorage.getItem("apuntes:" + k)) ?? d; } catch { return d; } }
   function save(k, v) { try { localStorage.setItem("apuntes:" + k, JSON.stringify(v)); } catch {} }
@@ -195,7 +195,41 @@
   const ordinal = (n) => ({ 1: "1er", 2: "2do", 3: "3er", 4: "4to" }[n] || n + "°");
 
   // Una sección por tipo (Parciales, Recuperatorios…), con subsecciones 1er / 2do
-  function porTipo(list) {
+  // Vista carpetas: cada documento como un archivo de Drive
+  function fileTile(d) {
+    const s = state.stats[d.id] || {}, on = !!state.liked[d.id];
+    const meta = [fechaTexto(d), d.paginas ? d.paginas + " pág." : "", state.profesor ? "" : d.profesor].filter(Boolean).join(" · ");
+    return `<div class="tile">
+      <button class="tile-main" data-view="${esc(d.id)}" title="${esc(d.titulo)}">
+        <span class="tile-icon">📄</span>
+        <span class="tile-text"><span class="tile-name">${esc(d.titulo)}</span><span class="tile-meta">${esc(meta)}</span></span>
+      </button>
+      <a class="tile-act" href="${esc(d.archivo)}" download data-dl="${esc(d.id)}" title="Descargar" aria-label="Descargar">⬇</a>
+      <button class="tile-act like-mini ${on ? "on" : ""}" data-like="${esc(d.id)}" title="Me sirvió" aria-pressed="${on}">${on ? "♥" : "♡"}${s.likes ? " " + s.likes : ""}</button>
+    </div>`;
+  }
+  const folderTile = (nombre, n, m, p) => `<button class="tile" data-m="${esc(m)}"${p !== undefined ? ` data-p="${esc(p)}"` : ""}>
+      <span class="tile-icon">📁</span><span class="tile-text"><span class="tile-name">${esc(nombre)}${p !== undefined && p !== "??" ? opIcon(p, m) : ""}</span></span>
+      <span class="count">${n}</span></button>`;
+  const asTiles = (docs, render) => render === fileTile ? `<div class="tiles">${docs.map(fileTile).join("")}</div>` : `<div class="grid">${docs.map(render).join("")}</div>`;
+
+  function carpetas(list) {
+    if (!state.materia) {   // Inicio: una carpeta por materia
+      const t = tree();
+      return `<div class="tiles">${Object.keys(t).sort((a, b) => a.localeCompare(b, "es")).map((m) => {
+        const n = list.filter((d) => d.materia === m).length;
+        return n ? folderTile(m, n, m) : "";
+      }).join("")}</div>`;
+    }
+    if (!state.profesor) {  // Materia: una carpeta por profe
+      const profs = [...new Set(list.map((d) => d.profesor))].sort((a, b) => (a === "??") - (b === "??") || a.localeCompare(b, "es"));
+      return `<h3 class="tiles-title">Profesores</h3><div class="tiles">${profs.map((p) =>
+        folderTile(p, list.filter((d) => d.profesor === p).length, state.materia, p)).join("")}</div>`;
+    }
+    return grouped(list, fileTile);  // Profe: sus archivos, por año
+  }
+
+  function porTipo(list, render = card) {
     return SECCIONES.map(([tipo, titulo, singular]) => {
       const docs = list.filter((d) => d.tipo === tipo);
       if (!docs.length) return "";
@@ -206,23 +240,23 @@
         body = nums.map((n) => {
           const sub = docs.filter((d) => (d.numero ?? null) === n);
           const label = n === null ? (conNumero ? `${titulo} (sin número)` : "") : `${ordinal(n)} ${singular}`;
-          return `<div class="subsection">${label ? `<h4>${esc(label)}</h4>` : ""}<div class="grid">${sub.map(card).join("")}</div></div>`;
+          return `<div class="subsection">${label ? `<h4>${esc(label)}</h4>` : ""}${asTiles(sub, render)}</div>`;
         }).join("");
       } else {
-        body = `<div class="grid">${docs.map(card).join("")}</div>`;
+        body = asTiles(docs, render);
       }
       return `<section class="section"><h3>${titulo} <span class="count">${docs.length}</span></h3>${body}</section>`;
     }).join("");
   }
 
   // Dentro de una materia: primero por año (el más nuevo arriba, "Sin fecha" al final)
-  function grouped(list) {
+  function grouped(list, render = card) {
     const anios = [...new Set(list.map((d) => d.anio ?? null))].sort((a, b) => (b ?? -1) - (a ?? -1));
     return anios.map((anio) => {
       const docs = list.filter((d) => (d.anio ?? null) === anio);
       return `<section class="year">
         <h2 class="year-title">${anio ?? "Sin fecha"} <span class="count">${docs.length}</span></h2>
-        ${porTipo(docs)}
+        ${porTipo(docs, render)}
       </section>`;
     }).join("");
   }
@@ -230,12 +264,17 @@
   function renderGrid() {
     if (state.vista === "profes") return renderProfes();
     const list = visibleDocs();
-    // Dentro de una materia se agrupa por secciones; en "Todas" o buscando, lista simple
-    $("#grid").innerHTML = state.materia && !state.q.trim()
-      ? grouped(list)
-      : `<div class="grid">${list.map(card).join("")}</div>`;
+    document.querySelectorAll(".view-toggle button").forEach((b) => b.classList.toggle("on", b.dataset.modo === state.modo));
+    const buscando = !!state.q.trim();
+    if (state.modo === "carpetas") {
+      // Estilo Drive: carpetas de materias → carpetas de profes → archivos. Buscando: archivos sueltos
+      $("#grid").innerHTML = buscando ? asTiles(list, fileTile) : carpetas(list);
+    } else {
+      // Lista: dentro de una materia se agrupa por año y secciones; en "Todas" o buscando, lista simple
+      $("#grid").innerHTML = state.materia && !buscando ? grouped(list) : `<div class="grid">${list.map(card).join("")}</div>`;
+    }
     $("#empty").hidden = list.length > 0;
-    $("#empty").textContent = state.docs.length ? "No se encontró nada con esos filtros." : "Todavía no hay documentos. ¡Subí las primeras fotos a la carpeta fotos/!";
+    $("#empty").textContent = state.docs.length ? "No se encontró nada con esos filtros." : "Todavía no hay documentos.";
   }
 
   function renderStats() {
@@ -340,6 +379,10 @@
     state.tipo = c.dataset.tipo; renderGrid();
   });
   $("#sort").onchange = (e) => { state.sort = e.target.value; renderGrid(); };
+  document.querySelector(".view-toggle").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-modo]"); if (!b) return;
+    state.modo = b.dataset.modo; save("modo", state.modo); renderGrid();
+  });
   $("#q").oninput = (e) => { state.q = e.target.value; renderGrid(); };
   window.addEventListener("hashchange", () => { readHash(); render(); });
 
