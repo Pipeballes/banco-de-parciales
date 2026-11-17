@@ -179,6 +179,9 @@ def numero(name: str) -> int | None:
 def classify(name: str) -> tuple[str, int | None]:
     """(tipo, número). Tipos: Parcial, Recuperatorio, Final, Apunte, Otro."""
     n = name.lower()
+    # Material de estudio, aunque el nombre mencione un parcial ("Banco de preguntas - 2do parcial")
+    if any(k in n for k in ("banco de preguntas", "apunte", "resumen")):
+        return "Apunte", None
     if "recup" in n:
         return "Recuperatorio", numero(n)
     if "final" in n:
@@ -280,9 +283,11 @@ def load_profes(docs: list[dict]) -> list[dict]:
         k = slug(str(nombre))
         mats = {}
         for mat, val in (info.get("materias") or {}).items():
+            mat_name = materias_slug.get(slug(str(mat)), str(mat))
+            dicta.setdefault(k, set()).add(mat_name)   # la dicta aunque no haya opinión todavía
             op = opinion(val, f"{nombre} / {mat}")
             if op:
-                mats[materias_slug.get(slug(str(mat)), str(mat))] = op
+                mats[mat_name] = op
         profes[k] = {
             "nombre": nombres.get(k, str(nombre)),
             "general": opinion(info.get("general"), str(nombre)),
