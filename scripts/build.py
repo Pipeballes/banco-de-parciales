@@ -170,7 +170,8 @@ def parse_name(stem: str) -> tuple[str, int | None, str | None]:
 
 
 def numero(name: str) -> int | None:
-    m = ORDINAL.search(name.lower())
+    # "Tema 2" o "Modelo B" no dicen qué parcial es: no los cuento como número
+    m = ORDINAL.search(re.sub(r"\b(tema|modelo|versi[oó]n)\s+\S+", " ", name.lower()))
     if not m:
         return None
     return int(m["num"]) if m["num"] else PALABRAS[m["pal"]]
