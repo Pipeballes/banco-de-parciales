@@ -146,6 +146,15 @@ def canonical(kind: str, names: list[str], where: str = "") -> dict[str, str]:
     return mapping
 
 
+SIN_PROFE = "??"
+_SIN_PROFE_SLUGS = {"sin-profesor", "sin-profe", "profesor-desconocido", "desconocido", "no-se", "archivo"}
+
+
+def sin_profe(folder: str) -> bool:
+    """Carpetas que significan "no sé quién es el profe": "Sin profesor", "??", "Desconocido"…"""
+    return folder.strip() in {"?", "??", "???"} or slug(folder) in _SIN_PROFE_SLUGS
+
+
 def is_stale(dest: Path, sources: list[Path]) -> bool:
     if not dest.exists():
         return True
@@ -172,20 +181,22 @@ def main() -> None:
 
     for materia_dir in materias:
         profs = sorted(p for p in materia_dir.iterdir() if p.is_dir())
-        prof_name = canonical("Profesor", [p.name for p in profs], f" en {materia_name[materia_dir.name]}")
-        for loose in visible(materia_dir):
-            if loose.is_file():
-                aviso(f'"{materia_dir.name}/{loose.name}" no tiene profesor. '
-                      f'Movelo a una carpeta de profesor (o a "{materia_dir.name}/Sin profesor/").')
-        if not profs:
-            aviso(f'La materia "{materia_dir.name}" no tiene carpetas de profesor.')
+        prof_name = canonical("Profesor", [p.name for p in profs if not sin_profe(p.name)],
+                              f" en {materia_name[materia_dir.name]}")
+        # Grupos (nombre visible, carpeta para los PDF, archivos). Lo que no tiene profe va a "??".
+        grupos = [(SIN_PROFE if sin_profe(pd.name) else prof_name[pd.name],
+                   "sin-profesor" if sin_profe(pd.name) else slug(pd.name),
+                   pd.name, visible(pd)) for pd in profs]
+        sueltos = [f for f in visible(materia_dir) if f.is_file()]
+        if sueltos:
+            grupos.append((SIN_PROFE, "sin-profesor", "", sueltos))
 
-        for prof_dir in profs:
-            base = OUT / slug(materia_dir.name) / slug(prof_dir.name)
-            for item in sorted(prof_dir.iterdir(), key=natural_key):
+        for prof_label, prof_slug, prof_folder, items in grupos:
+            base = OUT / slug(materia_dir.name) / prof_slug
+            for item in sorted(items, key=natural_key):
                 if item.name.startswith("."):
                     continue
-                where = f"{materia_dir.name}/{prof_dir.name}/{item.name}"
+                where = "/".join(x for x in (materia_dir.name, prof_folder, item.name) if x)
                 if item.is_dir():
                     imgs = sorted((f for f in item.iterdir()
                                    if f.suffix.lower() in IMG_EXT), key=natural_key)
@@ -226,10 +237,10 @@ def main() -> None:
                 pages = pdf_pages(dest) if sources[0].suffix.lower() == ".pdf" else len(sources)
                 rel = dest.relative_to(ROOT / "docs").as_posix()
                 docs.append({
-                    "id": slug(f"{materia_dir.name}-{prof_dir.name}-{title}"),
+                    "id": slug(f"{materia_dir.name}-{prof_folder or 'sin-profesor'}-{title}"),
                     "titulo": title.replace("_", " "),
                     "materia": materia_name[materia_dir.name],
-                    "profesor": prof_name[prof_dir.name],
+                    "profesor": prof_label,
                     "tipo": classify(title)[0],
                     "numero": classify(title)[1],
                     "paginas": pages,

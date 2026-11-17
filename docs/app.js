@@ -63,7 +63,8 @@
     $("#sidebar").innerHTML =
       `<button class="side-all ${!state.materia ? "active-nav" : ""}" data-m="">Todas las materias <span class="count">${state.docs.length}</span></button>` +
       materias.map((m) => {
-        const profs = Object.keys(t[m]).sort((a, b) => a.localeCompare(b, "es"));
+        // "??" (profe desconocido) siempre al final
+        const profs = Object.keys(t[m]).sort((a, b) => (a === "??") - (b === "??") || a.localeCompare(b, "es"));
         const total = profs.reduce((n, p) => n + t[m][p].length, 0);
         const open = state.materia === m;
         return `<div class="materia ${open ? "open" : ""}">
