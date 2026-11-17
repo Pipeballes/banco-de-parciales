@@ -19,10 +19,10 @@
 #   comentario: Explica muy bien, los parciales son parecidos a los de práctica.
 
 María Blanco:
-  general:
+  general: neutro
   materias:
     Administración de Datos I:
-  comentario:
+  comentario: Neutro, tirando a recomendable.
 
 Juan la Cruz Valladares:
   general: recomendado
@@ -64,8 +64,10 @@ Javier Francario:
   general:
   materias:
     Física: recomendado
-    Matemática: no recomendado
-  comentario: Recomendado para Física, no para Matemática.
+    Análisis Matemático I: no recomendado
+    Análisis Matemático II: no recomendado
+    Análisis Matemático IIIa: no recomendado
+  comentario: Recomendado para Física, no para los Análisis Matemáticos.
 
 Ana Leyes:
   general: recomendado
