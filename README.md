@@ -51,7 +51,11 @@ Apenas subís algo, una GitHub Action convierte las fotos a PDF y actualiza la p
 4. La página queda en `https://TU-USUARIO.github.io/NOMBRE-DEL-REPO/`.
 5. En `docs/config.js` poné `githubRepo: "TU-USUARIO/NOMBRE-DEL-REPO"`.
 
-## Activar likes y contador de descargas (opcional, gratis)
+## Likes y contador de descargas
+
+✅ Ya están activados con el proyecto de Supabase "Banco de Parciales UP". Los datos de conexión están en `docs/config.js` (la clave es pública, está bien que esté ahí).
+
+Si algún día querés usar otro proyecto:
 
 Sin esto la página funciona, pero los likes se guardan solo en el navegador de cada persona.
 

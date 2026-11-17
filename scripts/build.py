@@ -221,10 +221,16 @@ def main() -> None:
                 old.unlink()
                 print(f"  ✗ borrado {old.relative_to(ROOT)}")
 
-    DATA.write_text(json.dumps({
-        "generado": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "documentos": docs,
-    }, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Solo reescribe data.json si cambió algo (evita commits y conflictos inútiles)
+    try:
+        previo = json.loads(DATA.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        previo = {}
+    if previo.get("documentos") != docs:
+        DATA.write_text(json.dumps({
+            "generado": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "documentos": docs,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Listo: {len(docs)} documentos en docs/data.json")
     if AVISOS:
         print(f"{len(AVISOS)} aviso(s) sobre nombres — revisalos arriba.")

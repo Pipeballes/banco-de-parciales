@@ -14,7 +14,12 @@
   // ---------- Likes y descargas ----------
   const api = (path, opts = {}) => fetch(`${CFG.supabaseUrl}/rest/v1/${path}`, {
     ...opts,
-    headers: { apikey: CFG.supabaseAnonKey, Authorization: `Bearer ${CFG.supabaseAnonKey}`, "Content-Type": "application/json", ...(opts.headers || {}) },
+    headers: {
+      apikey: CFG.supabaseAnonKey,
+      // Las claves nuevas (sb_publishable_…) van solo en "apikey"; las viejas (JWT) también como Bearer.
+      ...(CFG.supabaseAnonKey.startsWith("sb_") ? {} : { Authorization: `Bearer ${CFG.supabaseAnonKey}` }),
+      "Content-Type": "application/json", ...(opts.headers || {}),
+    },
   });
 
   async function loadStats() {
