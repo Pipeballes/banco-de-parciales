@@ -42,8 +42,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A parciales/
-          git diff --cached --quiet || git commit -m "Convertir fotos a PDF [skip ci]"
+          git add -A parciales/ README.md
+          git diff --cached --quiet || git commit -m "Convertir fotos a PDF y actualizar README [skip ci]"
           git push
 
       - uses: actions/configure-pages@v5

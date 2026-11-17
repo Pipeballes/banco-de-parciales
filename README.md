@@ -36,6 +36,35 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 - **Buscador** por materia, profesor o tema, y **likes** para ver qué es lo que más le sirvió a la gente.
 - **Opiniones sobre profesores**: recomendados ✅, neutros ⚪ y no recomendados ❌, en general y por materia (un profe puede ser bueno en una materia y no en otra).
 
+### 📖 Materias disponibles
+
+<!-- MATERIAS:START -->
+**142 documentos en 20 materias** (se actualiza solo cada vez que se publica).
+
+| Materia | Documentos | Profesores |
+|---|---:|---|
+| Administración de Datos I | 5 | Laura Lazzati, María Blanco |
+| Administración de Proyectos | 10 | Pablo Werner |
+| Álgebra | 9 | Fabiana Daian, Juan la Cruz Valladares |
+| Álgebra Lineal | 17 | ?? |
+| Algoritmos I | 5 | ?? |
+| Algoritmos II | 7 | ?? |
+| Análisis de la Información y de la Decisión | 9 | ?? |
+| Análisis de Sistemas | 16 | Javier Rabuch |
+| Análisis Matemático I | 6 | Angela Pierina Lanza |
+| Análisis Matemático II | 15 | Javier Francario |
+| Análisis Matemático IIIa | 16 | ?? |
+| Aprendizaje de Máquina | 6 | ?? |
+| Aprendizaje por Refuerzo | 2 | ?? |
+| Arquitectura de Computadoras | 4 | Jorge Echevarria |
+| Arquitectura Web | 4 | ?? |
+| Derecho Aplicado a la Informática | 1 | Claudio Alberto Schifer |
+| Estructura de Datos y Algoritmos | 3 | Fabiana Daian |
+| Introducción a la Programación | 1 | Agustina Jurgiel |
+| Sistemas Digitales I | 3 | Ignacio Ziccardi |
+| Sistemas y Métodos | 3 | María Abeledo |
+<!-- MATERIAS:END -->
+
 > 🔒 **Privacidad:** en todos los exámenes se tapan el nombre, el legajo y la firma de quien lo rindió.
 
 ---

@@ -303,6 +303,39 @@ def load_profes(docs: list[dict]) -> list[dict]:
 
 
 # ---------------------------------------------------------------- principal
+README_START = "<!-- MATERIAS:START -->"
+README_END = "<!-- MATERIAS:END -->"
+
+
+def update_readme(docs: list[dict]) -> None:
+    """Actualiza la lista de materias del README (entre los marcadores) con lo que hay publicado."""
+    readme = ROOT / "README.md"
+    try:
+        text = readme.read_text(encoding="utf-8")
+    except OSError:
+        return
+    if README_START not in text or README_END not in text:
+        return
+    por_materia: dict[str, dict] = {}
+    for d in docs:
+        m = por_materia.setdefault(d["materia"], {"n": 0, "profes": set()})
+        m["n"] += 1
+        if d["profesor"] != SIN_PROFE:
+            m["profes"].add(d["profesor"])
+    filas = ["| Materia | Documentos | Profesores |", "|---|---:|---|"]
+    for mat in sorted(por_materia, key=lambda x: slug(x)):
+        m = por_materia[mat]
+        profes = ", ".join(sorted(m["profes"], key=str.lower)) or "??"
+        filas.append(f"| {mat} | {m['n']} | {profes} |")
+    bloque = (f"{README_START}\n**{len(docs)} documentos en {len(por_materia)} materias** "
+              f"(se actualiza solo cada vez que se publica).\n\n" + "\n".join(filas) + f"\n{README_END}")
+    a, rest = text.split(README_START, 1)
+    _, b = rest.split(README_END, 1)
+    nuevo = a + bloque + b
+    if nuevo != text:
+        readme.write_text(nuevo, encoding="utf-8")
+
+
 def main() -> None:
     if not SRC.exists():
         sys.exit("No existe la carpeta parciales/")
@@ -387,6 +420,7 @@ def main() -> None:
             "profesores": profes,
         }, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    update_readme(docs)
     print(f"Listo: {len(docs)} documentos")
     if AVISOS:
         print(f"{len(AVISOS)} aviso(s) — revisalos arriba.")
