@@ -12,6 +12,10 @@
   --parcial-bg: #fef3c7;
   --apunte: #047857;
   --apunte-bg: #d1fae5;
+  --recu: #7c3aed;
+  --recu-bg: #ede9fe;
+  --final: #be123c;
+  --final-bg: #ffe4e6;
   --shadow: 0 1px 2px rgba(16,24,40,.05), 0 4px 16px rgba(16,24,40,.06);
   --radius: 14px;
 }
@@ -19,14 +23,14 @@
   :root:not([data-theme="light"]) {
     --bg: #0f1117; --surface: #171a23; --surface-2: #1f2330; --text: #eceef4;
     --muted: #9aa1b2; --border: #2a2f3d; --accent: #818cf8; --accent-soft: #272a4a;
-    --parcial: #fbbf24; --parcial-bg: #3a2a0a; --apunte: #34d399; --apunte-bg: #0b3326;
+    --parcial: #fbbf24; --parcial-bg: #3a2a0a; --apunte: #34d399; --apunte-bg: #0b3326; --recu: #c4b5fd; --recu-bg: #2e1f5e; --final: #fda4af; --final-bg: #4c0d1d;
     --shadow: 0 1px 2px rgba(0,0,0,.4);
   }
 }
 :root[data-theme="dark"] {
   --bg: #0f1117; --surface: #171a23; --surface-2: #1f2330; --text: #eceef4;
   --muted: #9aa1b2; --border: #2a2f3d; --accent: #818cf8; --accent-soft: #272a4a;
-  --parcial: #fbbf24; --parcial-bg: #3a2a0a; --apunte: #34d399; --apunte-bg: #0b3326;
+  --parcial: #fbbf24; --parcial-bg: #3a2a0a; --apunte: #34d399; --apunte-bg: #0b3326; --recu: #c4b5fd; --recu-bg: #2e1f5e; --final: #fda4af; --final-bg: #4c0d1d;
   --shadow: 0 1px 2px rgba(0,0,0,.4);
 }
 
@@ -91,6 +95,7 @@ a { color: var(--accent); }
 .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 select { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; padding: 7px 10px; font: inherit; font-size: 14px; }
 
+#grid { display: block; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   box-shadow: var(--shadow); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
@@ -100,6 +105,15 @@ select { border: 1px solid var(--border); background: var(--surface); color: var
   padding: 3px 8px; border-radius: 6px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
 .badge.Parcial { background: var(--parcial-bg); color: var(--parcial); }
 .badge.Apunte { background: var(--apunte-bg); color: var(--apunte); }
+.badge.Recuperatorio { background: var(--recu-bg); color: var(--recu); }
+.badge.Final { background: var(--final-bg); color: var(--final); }
+
+/* Secciones dentro de una materia */
+.section { margin-bottom: 28px; }
+.section > h2 { font-size: 20px; margin: 0 0 12px; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+.section > h2 .count { font-size: 13px; }
+.subsection { margin-bottom: 18px; }
+.subsection > h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
 .meta { font-size: 13px; color: var(--muted); }
 .meta div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .actions { display: flex; gap: 8px; margin-top: auto; align-items: center; }

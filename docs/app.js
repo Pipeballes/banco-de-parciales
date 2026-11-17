@@ -118,9 +118,39 @@
     </article>`;
   }
 
+  // Secciones: Parciales (1er, 2do…), Recuperatorios (1er, 2do…), Finales, Apuntes, Otros
+  const SECCIONES = [
+    ["Parcial", "Parciales", "Parcial"], ["Recuperatorio", "Recuperatorios", "Recuperatorio"],
+    ["Final", "Finales"], ["Apunte", "Apuntes"], ["Otro", "Otros"],
+  ];
+  const ordinal = (n) => ({ 1: "1er", 2: "2do", 3: "3er", 4: "4to" }[n] || n + "°");
+
+  function grouped(list) {
+    return SECCIONES.map(([tipo, titulo, singular]) => {
+      const docs = list.filter((d) => d.tipo === tipo);
+      if (!docs.length) return "";
+      let body;
+      if (singular) {
+        const nums = [...new Set(docs.map((d) => d.numero ?? null))].sort((a, b) => (a ?? 99) - (b ?? 99));
+        const conNumero = nums.some((n) => n !== null);
+        body = nums.map((n) => {
+          const sub = docs.filter((d) => (d.numero ?? null) === n);
+          const label = n === null ? (conNumero ? `${titulo} (sin número)` : "") : `${ordinal(n)} ${singular}`;
+          return `<div class="subsection">${label ? `<h3>${esc(label)}</h3>` : ""}<div class="grid">${sub.map(card).join("")}</div></div>`;
+        }).join("");
+      } else {
+        body = `<div class="grid">${docs.map(card).join("")}</div>`;
+      }
+      return `<section class="section"><h2>${titulo} <span class="count">${docs.length}</span></h2>${body}</section>`;
+    }).join("");
+  }
+
   function renderGrid() {
     const list = visibleDocs();
-    $("#grid").innerHTML = list.map(card).join("");
+    // Dentro de una materia se agrupa por secciones; en "Todas" o buscando, lista simple
+    $("#grid").innerHTML = state.materia && !state.q.trim()
+      ? grouped(list)
+      : `<div class="grid">${list.map(card).join("")}</div>`;
     $("#empty").hidden = list.length > 0;
     $("#empty").textContent = state.docs.length ? "No se encontró nada con esos filtros." : "Todavía no hay documentos. ¡Subí las primeras fotos a la carpeta fotos/!";
   }
@@ -135,7 +165,17 @@
     ].map(([n, uno, varios]) => `<span class="stat"><b>${n}</b> ${n === 1 ? uno : varios}</span>`).join("");
   }
 
-  function render() { renderSidebar(); renderCrumbs(); renderGrid(); }
+  function renderChips() {
+    const scope = state.docs.filter((d) => (!state.materia || d.materia === state.materia) && (!state.profesor || d.profesor === state.profesor));
+    const tipos = new Set(scope.map((d) => d.tipo));
+    document.querySelectorAll(".chip").forEach((c) => { c.hidden = c.dataset.tipo !== "" && !tipos.has(c.dataset.tipo); });
+    if (state.tipo && !tipos.has(state.tipo)) {
+      state.tipo = "";
+      document.querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c.dataset.tipo === ""));
+    }
+  }
+
+  function render() { renderSidebar(); renderCrumbs(); renderChips(); renderGrid(); }
 
   // ---------- Eventos ----------
   document.addEventListener("click", async (e) => {

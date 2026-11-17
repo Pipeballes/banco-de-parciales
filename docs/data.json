@@ -1,5 +1,5 @@
 {
-  "generado": "2026-11-17T17:41:39+00:00",
+  "generado": "2026-11-17T17:47:55+00:00",
   "documentos": [
     {
       "id": "administracion-de-datos-i-maria-blanco-parcial-1-2026-enunciado-y-resolucion",
@@ -7,9 +7,34 @@
       "materia": "Administración de Datos I",
       "profesor": "María Blanco",
       "tipo": "Parcial",
+      "numero": 1,
       "paginas": 3,
       "tamano": 355409,
       "archivo": "archivos/administracion-de-datos-i/maria-blanco/parcial-1-2026-enunciado-y-resolucion.pdf",
+      "fecha": "2026-11-17"
+    },
+    {
+      "id": "algebra-juan-la-cruz-valladares-parcial-1-tema-a",
+      "titulo": "Parcial 1 - Tema A",
+      "materia": "Álgebra",
+      "profesor": "Juan la Cruz Valladares",
+      "tipo": "Parcial",
+      "numero": 1,
+      "paginas": 2,
+      "tamano": 109722,
+      "archivo": "archivos/algebra/juan-la-cruz-valladares/parcial-1-tema-a.pdf",
+      "fecha": "2026-11-17"
+    },
+    {
+      "id": "algebra-juan-la-cruz-valladares-parcial-1-tema-b",
+      "titulo": "Parcial 1 - Tema B",
+      "materia": "Álgebra",
+      "profesor": "Juan la Cruz Valladares",
+      "tipo": "Parcial",
+      "numero": 1,
+      "paginas": 1,
+      "tamano": 128501,
+      "archivo": "archivos/algebra/juan-la-cruz-valladares/parcial-1-tema-b.pdf",
       "fecha": "2026-11-17"
     }
   ]

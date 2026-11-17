@@ -49,13 +49,35 @@ def natural_key(p: Path):
     return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", p.name)]
 
 
-def guess_type(name: str) -> str:
+ORDINAL = re.compile(
+    r"\b(?:(?P<num>[1-4])\s*(?:°|º|er|ero|ro|do|ndo|to)?|(?P<pal>primer|primero|segundo|tercer|tercero|cuarto))\b")
+PALABRAS = {"primer": 1, "primero": 1, "segundo": 2, "tercer": 3, "tercero": 3, "cuarto": 4}
+
+
+def numero(name: str) -> int | None:
+    """Primer número de instancia (1–4) en el nombre: "Parcial 1", "1° parcial", "segundo recuperatorio"."""
+    m = ORDINAL.search(name.lower())
+    if not m:
+        return None
+    return int(m["num"]) if m["num"] else PALABRAS[m["pal"]]
+
+
+def classify(name: str) -> tuple[str, int | None]:
+    """Devuelve (tipo, número). Tipos: Parcial, Recuperatorio, Final, Apunte, Otro."""
     n = name.lower()
-    if any(k in n for k in ("parcial", "final", "examen", "quiz", "recuperatorio")):
-        return "Parcial"
-    if any(k in n for k in ("apunte", "nota", "clase", "resumen", "teoria", "teoría")):
-        return "Apunte"
-    return "Otro"
+    if "recup" in n:
+        return "Recuperatorio", numero(n)
+    if "final" in n:
+        return "Final", None
+    if any(k in n for k in ("parcial", "examen", "quiz")):
+        return "Parcial", numero(n)
+    if any(k in n for k in ("apunte", "nota", "clase", "resumen", "teoria", "teoría", "resolucion", "resolución")):
+        return "Apunte", None
+    return "Otro", None
+
+
+def guess_type(name: str) -> str:
+    return classify(name)[0]
 
 
 def load_image(path: Path) -> Image.Image:
@@ -186,7 +208,10 @@ def main() -> None:
                           f'"Parcial 1 2023" o "Apuntes clase 3", para que la gente lo encuentre.')
                 elif guess_type(title) == "Otro":
                     aviso(f'"{where}": no dice si es parcial o apunte, se muestra como "Otro". '
-                          f'Agregá "Parcial", "Final" o "Apuntes" al nombre si querés.')
+                          f'Agregá "Parcial 1", "Recuperatorio 2", "Final" o "Apuntes" al nombre si querés.')
+                elif guess_type(title) in ("Parcial", "Recuperatorio") and classify(title)[1] is None:
+                    aviso(f'"{where}": no dice qué número de {guess_type(title).lower()} es '
+                          f'(1 o 2). Agregalo al nombre, por ej. "{guess_type(title)} 1 …".')
 
                 dest = base / f"{slug(title)}.pdf"
                 expected.add(dest)
@@ -205,7 +230,8 @@ def main() -> None:
                     "titulo": title.replace("_", " "),
                     "materia": materia_name[materia_dir.name],
                     "profesor": prof_name[prof_dir.name],
-                    "tipo": guess_type(title),
+                    "tipo": classify(title)[0],
+                    "numero": classify(title)[1],
                     "paginas": pages,
                     "tamano": dest.stat().st_size,
                     "archivo": rel,
