@@ -3,7 +3,7 @@
   const REMOTE = Boolean(CFG.supabaseUrl && CFG.supabaseAnonKey);
   const $ = (s) => document.querySelector(s);
 
-  const state = { docs: [], stats: {}, liked: load("liked", {}), materia: "", profesor: "", tipo: "", q: "", sort: "recientes" };
+  const state = { docs: [], profes: [], stats: {}, liked: load("liked", {}), materia: "", profesor: "", tipo: "", q: "", sort: "recientes", vista: "docs", profMateria: "" };
 
   function load(k, d) { try { return JSON.parse(localStorage.getItem("apuntes:" + k)) ?? d; } catch { return d; } }
   function save(k, v) { try { localStorage.setItem("apuntes:" + k, JSON.stringify(v)); } catch {} }
@@ -43,8 +43,64 @@
 
   // ---------- Navegación (hash: #materia/profesor) ----------
   function readHash() {
+    if (location.hash === "#profesores") { state.vista = "profes"; state.materia = state.profesor = ""; return; }
+    state.vista = "docs";
     const [m = "", p = ""] = location.hash.slice(1).split("/").map(decodeURIComponent);
     state.materia = m; state.profesor = p;
+  }
+
+  // ---------- Opiniones sobre profes ----------
+  const OP = {
+    "recomendado": { icon: "✅", titulo: "Recomendados", clase: "recomendado" },
+    "neutro": { icon: "⚪", titulo: "Neutros", clase: "neutro" },
+    "no recomendado": { icon: "❌", titulo: "No recomendados", clase: "no-recomendado" },
+  };
+  const profeInfo = (nombre) => state.profes.find((p) => norm(p.nombre) === norm(nombre));
+  // Opinión para una materia: la de esa materia si existe, si no la general
+  function opinionDe(nombre, materia) {
+    const p = profeInfo(nombre);
+    if (!p) return null;
+    return (materia && p.materias[materia]) || p.general || null;
+  }
+  const opIcon = (nombre, materia) => {
+    const o = opinionDe(nombre, materia);
+    return o ? `<span class="op" title="${esc(OP[o].titulo.replace(/s$/, ""))}${materia && profeInfo(nombre).materias[materia] ? " en " + esc(materia) : ""}">${OP[o].icon}</span>` : "";
+  };
+
+  function renderProfes() {
+    const mat = state.profMateria;
+    const materias = [...new Set(state.profes.flatMap((p) => p.dicta))].sort((a, b) => a.localeCompare(b, "es"));
+    const lista = state.profes.filter((p) => !mat || p.dicta.includes(mat));
+    const grupos = { "recomendado": [], "neutro": [], "no recomendado": [], depende: [], sin: [] };
+    for (const p of lista) {
+      const o = mat ? (p.materias[mat] || p.general) : p.general;
+      if (o) grupos[o].push(p);
+      else if (!mat && Object.keys(p.materias).length) grupos.depende.push(p);
+      else grupos.sin.push(p);
+    }
+    const tarjeta = (p) => `<div class="profe">
+        <strong>${esc(p.nombre)}</strong>
+        <div class="mat-chips">${p.dicta.map((m) => {
+          const o = p.materias[m] || p.general;
+          return `<a class="mat-chip" href="#${encodeURIComponent(m)}/${encodeURIComponent(p.nombre)}" title="Ver sus parciales de ${esc(m)}">${o ? OP[o].icon + " " : ""}${esc(m)}</a>`;
+        }).join("")}</div>
+        ${p.comentario ? `<p>“${esc(p.comentario)}”</p>` : ""}
+      </div>`;
+    const col = (key, titulo, clase) => `<div class="profes-col ${clase}">
+        <h3>${titulo} <span class="count">${grupos[key].length}</span></h3>
+        ${grupos[key].length ? grupos[key].map(tarjeta).join("") : `<p class="profes-vacio">Nadie por ahora.</p>`}
+      </div>`;
+    $("#grid").innerHTML = `
+      <p class="profes-intro">Opiniones de estudiantes, para orientarte. Un profe puede ser recomendado en una materia y no en otra: elegí la materia para ver la opinión que corresponde.</p>
+      <div class="profes-filtro"><label for="prof-mat">Ver opinión para:</label>
+        <select id="prof-mat"><option value="">Todas las materias</option>${materias.map((m) => `<option ${m === mat ? "selected" : ""}>${esc(m)}</option>`).join("")}</select></div>
+      <div class="profes-cols">
+        ${Object.entries(OP).map(([k, v]) => col(k, `${v.icon} ${v.titulo}`, v.clase)).join("")}
+      </div>
+      ${grupos.depende.length ? `<div class="profes-cols" style="margin-top:14px">${col("depende", "🔀 Depende de la materia", "depende")}</div>` : ""}
+      ${grupos.sin.length ? `<p class="profes-sin">Sin opinión todavía: ${grupos.sin.map((p) => p.dicta.length ? `<a href="#${encodeURIComponent(p.dicta[0])}/${encodeURIComponent(p.nombre)}">${esc(p.nombre)}</a>` : esc(p.nombre)).join(", ")}.</p>` : ""}`;
+    $("#empty").hidden = true;
+    $("#prof-mat").onchange = (e) => { state.profMateria = e.target.value; renderProfes(); };
   }
   function go(m = "", p = "") {
     location.hash = m ? [m, p].filter(Boolean).map(encodeURIComponent).join("/") : "";
@@ -61,7 +117,7 @@
     const t = tree();
     const materias = Object.keys(t).sort((a, b) => a.localeCompare(b, "es"));
     $("#sidebar").innerHTML =
-      `<button class="side-all ${!state.materia ? "active-nav" : ""}" data-m="">Todas las materias <span class="count">${state.docs.length}</span></button>` +
+      `<button class="side-all ${!state.materia && state.vista === "docs" ? "active-nav" : ""}" data-m="">Todas las materias <span class="count">${state.docs.length}</span></button>` +
       materias.map((m) => {
         // "??" (profe desconocido) siempre al final
         const profs = Object.keys(t[m]).sort((a, b) => (a === "??") - (b === "??") || a.localeCompare(b, "es"));
@@ -72,13 +128,14 @@
             <span><span class="caret">▸</span>${esc(m)}</span><span class="count">${total}</span></button>
           <div class="profs">${profs.map((p) => `
             <button class="prof-btn ${open && state.profesor === p ? "active-nav" : ""}" data-m="${esc(m)}" data-p="${esc(p)}">
-              ${esc(p)} <span class="count">${t[m][p].length}</span></button>`).join("")}
+              <span>${esc(p)}${opIcon(p, m)}</span> <span class="count">${t[m][p].length}</span></button>`).join("")}
           </div></div>`;
       }).join("");
   }
 
   function renderCrumbs() {
     const parts = [`<a href="#">Inicio</a>`];
+    if (state.vista === "profes") parts.push(`<span>Profesores</span>`);
     if (state.materia) parts.push(`<a href="#${encodeURIComponent(state.materia)}">${esc(state.materia)}</a>`);
     if (state.profesor) parts.push(`<span>${esc(state.profesor)}</span>`);
     $("#crumbs").innerHTML = parts.join(" &nbsp;/&nbsp; ");
@@ -118,7 +175,7 @@
       <div class="card-top"><h3>${esc(d.titulo)}</h3><span class="badge ${esc(d.tipo)}">${esc(d.tipo)}</span></div>
       <div class="meta">
         <div>📘 ${esc(d.materia)}</div>
-        <div>👤 ${d.profesor === "??" ? '<span title="Profesor desconocido">??</span>' : esc(d.profesor)}</div>
+        <div>👤 ${d.profesor === "??" ? '<span title="Profesor desconocido">??</span>' : esc(d.profesor) + opIcon(d.profesor, d.materia)}</div>
         ${fechaTexto(d) ? `<div>📅 ${esc(fechaTexto(d))}</div>` : ""}
         <div>📄 ${d.paginas ? d.paginas + " pág. · " : ""}${size(d.tamano)}${s.descargas ? ` · ⬇ ${s.descargas}` : ""}</div>
       </div>
@@ -171,6 +228,7 @@
   }
 
   function renderGrid() {
+    if (state.vista === "profes") return renderProfes();
     const list = visibleDocs();
     // Dentro de una materia se agrupa por secciones; en "Todas" o buscando, lista simple
     $("#grid").innerHTML = state.materia && !state.q.trim()
@@ -200,7 +258,15 @@
     }
   }
 
-  function render() { renderSidebar(); renderCrumbs(); renderChips(); renderGrid(); }
+  function render() {
+    renderSidebar(); renderCrumbs();
+    const profes = state.vista === "profes";
+    $("#toolbar").hidden = profes;
+    $("#nav-profes").classList.toggle("active", profes);
+    document.body.classList.toggle("vista-profes", profes);
+    if (profes) return renderProfes();
+    renderChips(); renderGrid();
+  }
 
   // ---------- Eventos ----------
   document.addEventListener("click", async (e) => {
@@ -296,6 +362,7 @@
     try {
       const data = await (await fetch("data.json", { cache: "no-cache" })).json();
       state.docs = data.documentos || [];
+      state.profes = data.profesores || [];
     } catch { state.docs = []; }
     readHash();
     renderStats();

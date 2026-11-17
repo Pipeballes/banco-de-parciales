@@ -5,7 +5,7 @@ name: Convertir fotos y publicar
 on:
   push:
     branches: [main]
-    paths: ["parciales/**", "docs/**", "scripts/**", ".github/workflows/**"]
+    paths: ["parciales/**", "profesores.yml", "docs/**", "scripts/**", ".github/workflows/**"]
   workflow_dispatch:
 
 permissions:
@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12"
 
       - name: Instalar dependencias
-        run: pip install pillow pillow-heif
+        run: pip install pillow pillow-heif pyyaml
 
       - name: Convertir fotos a PDF y armar la página
         run: python scripts/build.py

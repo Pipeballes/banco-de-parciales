@@ -34,6 +34,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 - Dentro de cada materia, todo separado **por año** y, adentro, en **1er / 2do Parcial, 1er / 2do Recuperatorio, Finales y Apuntes**, con la fecha de cada examen.
 - **Vista previa** desde el celular o la compu, y **descarga en PDF** con un toque.
 - **Buscador** por materia, profesor o tema, y **likes** para ver qué es lo que más le sirvió a la gente.
+- **Opiniones sobre profesores**: recomendados ✅, neutros ⚪ y no recomendados ❌, en general y por materia (un profe puede ser bueno en una materia y no en otra).
 
 > 🔒 **Privacidad:** en todos los exámenes se tapan el nombre, el legajo y la firma de quien lo rindió.
 
@@ -87,6 +88,18 @@ parciales/
 
 En la pestaña **Actions** → última ejecución de "Convertir fotos y publicar" aparece un resumen con todo lo publicado y una lista **⚠️ para revisar** si algo está raro: la misma materia o profesor escrito de dos formas ("Perez" / "Pérez"), fotos sueltas sin profesor, nombres genéricos (`IMG_2023…`), o parciales sin número.
 
+### Opiniones sobre profesores
+
+Se cargan en [`profesores.yml`](profesores.yml) (se puede editar desde GitHub con el lápiz ✏️). Opciones: `recomendado`, `neutro` o `no recomendado`:
+
+```yaml
+Nombre del Profe:
+  general: recomendado          # opinión de siempre
+  materias:
+    Álgebra: no recomendado     # opinión distinta para esta materia
+  comentario: Explica muy bien.  # opcional, siempre respetuoso
+```
+
 ### Likes y descargas
 
 Se guardan en Supabase (proyecto "Banco de Parciales UP"). Los datos de conexión están en [`docs/config.js`](docs/config.js); la clave es pública, está bien que esté ahí. La tabla y sus permisos están en [`supabase.sql`](supabase.sql).
@@ -109,6 +122,7 @@ y abrí http://localhost:8000
 | `scripts/build.py` | Convierte fotos a PDF, detecta secciones y revisa nombres |
 | `docs/` | La página web (los PDF y `data.json` se generan al publicar) |
 | `.github/workflows/publicar.yml` | Publica la página automáticamente |
+| `profesores.yml` | Opiniones sobre profesores |
 | `supabase.sql` | Base de datos de likes y descargas |
 
 </details>

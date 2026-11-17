@@ -1,0 +1,31 @@
+# Opiniones sobre profesores
+# ==========================
+#
+# Opciones: recomendado | neutro | no recomendado
+#
+# - "general" es la opinión de siempre.
+# - En "materias" podés poner una opinión distinta para una materia en particular
+#   (por ejemplo, un profe que es bueno en una materia pero no en otra).
+# - "comentario" es opcional. Mantenelo respetuoso: hablá de cómo da la clase,
+#   cómo corrige o cómo toma los exámenes, no de la persona.
+#
+# Ejemplo:
+#
+# Nombre del Profe:
+#   general: recomendado
+#   materias:
+#     Álgebra: no recomendado
+#     Análisis Matemático I: recomendado
+#   comentario: Explica muy bien, los parciales son parecidos a los de práctica.
+
+María Blanco:
+  general:
+  materias:
+    Administración de Datos I:
+  comentario:
+
+Juan la Cruz Valladares:
+  general:
+  materias:
+    Álgebra:
+  comentario:

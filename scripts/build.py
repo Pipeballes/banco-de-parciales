@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "parciales"
 OUT = ROOT / "docs" / "archivos"      # se genera en cada build (no se guarda en git)
 DATA = ROOT / "docs" / "data.json"    # idem
+PROFES = ROOT / "profesores.yml"      # opiniones sobre profesores (lo edita una persona)
 
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".bmp", ".tif", ".tiff"}
 MAX_SIDE = 2200  # px: se lee bien y los PDF quedan livianos
@@ -227,6 +228,74 @@ def expand(items: list[Path], year: int | None = None):
             yield item, year
 
 
+# ---------------------------------------------------------------- opiniones sobre profes
+OPINIONES = {
+    "recomendado": "recomendado", "recomendada": "recomendado", "si": "recomendado", "sí": "recomendado",
+    "bueno": "recomendado", "buena": "recomendado", "👍": "recomendado", "✅": "recomendado",
+    "neutro": "neutro", "neutra": "neutro", "regular": "neutro", "normal": "neutro", "meh": "neutro",
+    "no recomendado": "no recomendado", "no recomendada": "no recomendado", "no": "no recomendado",
+    "malo": "no recomendado", "mala": "no recomendado", "👎": "no recomendado", "❌": "no recomendado",
+}
+
+
+def opinion(value, where: str) -> str | None:
+    if isinstance(value, bool):  # YAML lee "no"/"sí" como falso/verdadero
+        return "recomendado" if value else "no recomendado"
+    if value is None or str(value).strip() == "":
+        return None
+    key = str(value).strip().lower()
+    if key in OPINIONES:
+        return OPINIONES[key]
+    aviso(f'profesores.yml: "{value}" ({where}) no se entiende. Usá: recomendado, neutro o no recomendado.')
+    return None
+
+
+def load_profes(docs: list[dict]) -> list[dict]:
+    """Junta las opiniones de profesores.yml con los profes que aparecen en los parciales."""
+    raw = {}
+    if PROFES.exists():
+        try:
+            import yaml  # type: ignore
+            raw = yaml.safe_load(PROFES.read_text(encoding="utf-8")) or {}
+        except Exception as e:  # noqa: BLE001
+            aviso(f"profesores.yml tiene un error de formato y no se pudo leer: {e}")
+            raw = {}
+        if not isinstance(raw, dict):
+            aviso("profesores.yml tiene que ser una lista de profes con sus opiniones.")
+            raw = {}
+
+    dicta: dict[str, set[str]] = {}
+    nombres: dict[str, str] = {}
+    materias_slug = {}
+    for d in docs:
+        if d["profesor"] == SIN_PROFE:
+            continue
+        nombres.setdefault(slug(d["profesor"]), d["profesor"])
+        dicta.setdefault(slug(d["profesor"]), set()).add(d["materia"])
+        materias_slug[slug(d["materia"])] = d["materia"]
+
+    profes: dict[str, dict] = {}
+    for nombre, info in raw.items():
+        info = info if isinstance(info, dict) else {"general": info}
+        k = slug(str(nombre))
+        mats = {}
+        for mat, val in (info.get("materias") or {}).items():
+            op = opinion(val, f"{nombre} / {mat}")
+            if op:
+                mats[materias_slug.get(slug(str(mat)), str(mat))] = op
+        profes[k] = {
+            "nombre": nombres.get(k, str(nombre)),
+            "general": opinion(info.get("general"), str(nombre)),
+            "materias": mats,
+            "comentario": str(info.get("comentario") or "").strip(),
+        }
+    for k, nombre in nombres.items():
+        profes.setdefault(k, {"nombre": nombre, "general": None, "materias": {}, "comentario": ""})
+    for k, p in profes.items():
+        p["dicta"] = sorted(dicta.get(k, set()) | set(p["materias"]), key=str.lower)
+    return sorted(profes.values(), key=lambda p: p["nombre"].lower())
+
+
 # ---------------------------------------------------------------- principal
 def main() -> None:
     if not SRC.exists():
@@ -300,14 +369,16 @@ def main() -> None:
                     "subido": git_date(pdf) or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                 })
 
+    profes = load_profes(docs)
     try:
         previo = json.loads(DATA.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         previo = {}
-    if previo.get("documentos") != docs:
+    if previo.get("documentos") != docs or previo.get("profesores") != profes:
         DATA.write_text(json.dumps({
             "generado": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "documentos": docs,
+            "profesores": profes,
         }, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"Listo: {len(docs)} documentos")
