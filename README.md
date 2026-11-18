@@ -43,7 +43,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 ### 📖 Materias disponibles
 
 <!-- MATERIAS:START -->
-**332 documentos en 36 materias** (se actualiza solo cada vez que se publica).
+**333 documentos en 36 materias** (se actualiza solo cada vez que se publica).
 
 | Materia | Documentos | Profesores |
 |---|---:|---|
@@ -72,7 +72,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 | DevOps | 3 | ?? |
 | Estructura de Datos y Algoritmos | 16 | Adrián Nisim, Anania, Fabiana Daian, Marcela Toba |
 | Física I | 25 | Ana Leyes |
-| Física IIB | 13 | Ana Leyes, Ricardo Picicelli |
+| Física IIB | 14 | Ana Leyes, Ricardo Picicelli |
 | Fundamentos de Data Science | 8 | Carlos Gimenez |
 | Fundamentos de Economía y Finanzas | 6 | ?? |
 | Fundamentos de Inteligencia Artificial | 16 | ?? |
