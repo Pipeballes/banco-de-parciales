@@ -3,7 +3,7 @@
   const REMOTE = Boolean(CFG.supabaseUrl && CFG.supabaseAnonKey);
   const $ = (s) => document.querySelector(s);
 
-  const state = { docs: [], profes: [], stats: {}, liked: load("liked", {}), materia: "", profesor: "", tipo: "", q: "", sort: "recientes", vista: "docs", profMateria: "", modo: load("modo", "lista") };
+  const state = { docs: [], profes: [], stats: {}, votos: {}, misVotos: load("misVotos", {}), liked: load("liked", {}), materia: "", profesor: "", tipo: "", q: "", sort: "recientes", vista: "docs", profMateria: "", modo: load("modo", "lista") };
 
   function load(k, d) { try { return JSON.parse(localStorage.getItem("apuntes:" + k)) ?? d; } catch { return d; } }
   function save(k, v) { try { localStorage.setItem("apuntes:" + k, JSON.stringify(v)); } catch {} }
@@ -41,6 +41,34 @@
     } catch (e) { console.warn(e); }
   }
 
+  // ---------- Votos de profes ----------
+  function votanteId() {
+    let id = load("votante", "");
+    if (!id) { id = crypto.randomUUID ? crypto.randomUUID() : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ Math.random() * 16 >> c / 4).toString(16)); save("votante", id); }
+    return id;
+  }
+  async function loadVotos() {
+    if (!REMOTE) { state.votos = {}; return; }
+    try {
+      const rows = await (await api("rpc/resumen_votos", { method: "POST", body: "{}" })).json();
+      const v = {};
+      for (const r of rows) (v[r.profesor] ||= {})[r.voto] = Number(r.cantidad);
+      state.votos = v;
+    } catch (e) { console.warn("No se pudieron cargar los votos", e); }
+  }
+  async function votarProfe(nombre, voto) {
+    const antes = state.misVotos[nombre], nuevo = antes === voto ? null : voto;
+    const v = (state.votos[nombre] ||= {});
+    if (antes) v[antes] = Math.max(0, (v[antes] || 0) - 1);
+    if (nuevo) v[nuevo] = (v[nuevo] || 0) + 1;
+    if (nuevo) state.misVotos[nombre] = nuevo; else delete state.misVotos[nombre];
+    save("misVotos", state.misVotos);
+    renderProfes(); renderSidebar();
+    if (!REMOTE) return;
+    try { await api("rpc/votar_profe", { method: "POST", body: JSON.stringify({ p_profesor: nombre, p_votante: votanteId(), p_voto: nuevo }) }); }
+    catch (e) { console.warn(e); }
+  }
+
   // ---------- Navegación (hash: #materia/profesor) ----------
   function readHash() {
     const especiales = { "#profesores": "profes", "#subir": "subir", "#sugerencias": "sugerir" };
@@ -58,14 +86,27 @@
   };
   const profeInfo = (nombre) => state.profes.find((p) => norm(p.nombre) === norm(nombre));
   // Opinión para una materia: la de esa materia si existe, si no la general
+  // La opinión inicial (profesores.yml) cuenta como 1 voto; después manda lo que vote la mayoría
+  function conteo(p, materia) {
+    const semilla = (materia && p.materias[materia]) || p.general || null;
+    const c = { ...(state.votos[p.nombre] || {}) };
+    if (semilla) c[semilla] = (c[semilla] || 0) + 1;
+    return { c, semilla, total: Object.values(c).reduce((a, b) => a + b, 0) };
+  }
+  function resultado(p, materia) {
+    const { c, semilla, total } = conteo(p, materia);
+    if (!total) return null;
+    const max = Math.max(...Object.values(c));
+    const empatados = Object.keys(c).filter((k) => c[k] === max);
+    return empatados.includes(semilla) ? semilla : empatados.includes("neutro") ? "neutro" : empatados[0];
+  }
   function opinionDe(nombre, materia) {
     const p = profeInfo(nombre);
-    if (!p) return null;
-    return (materia && p.materias[materia]) || p.general || null;
+    return p ? resultado(p, materia) : null;
   }
   const opIcon = (nombre, materia) => {
     const o = opinionDe(nombre, materia);
-    return o ? `<span class="op" title="${esc(OP[o].titulo.replace(/s$/, ""))}${materia && profeInfo(nombre).materias[materia] ? " en " + esc(materia) : ""}">${OP[o].icon}</span>` : "";
+    return o ? `<span class="op" title="${esc(OP[o].titulo.replace(/s$/, ""))}">${OP[o].icon}</span>` : "";
   };
 
   function renderProfes() {
@@ -74,11 +115,18 @@
     const lista = state.profes.filter((p) => !mat || p.dicta.includes(mat));
     const grupos = { "recomendado": [], "neutro": [], "no recomendado": [], depende: [], sin: [] };
     for (const p of lista) {
-      const o = mat ? (p.materias[mat] || p.general) : p.general;
+      const tieneVotos = Object.keys(state.votos[p.nombre] || {}).length > 0;
+      const porMateria = !mat && !p.general && Object.keys(p.materias).length;
+      const o = porMateria && !tieneVotos ? null : resultado(p, mat);
       if (o) grupos[o].push(p);
-      else if (!mat && Object.keys(p.materias).length) grupos.depende.push(p);
+      else if (porMateria) grupos.depende.push(p);
       else grupos.sin.push(p);
     }
+    const votar = (p) => {
+      const { c } = conteo(p, mat), mio = state.misVotos[p.nombre];
+      return `<div class="votar" role="group" aria-label="Votar a ${esc(p.nombre)}">${[["recomendado", "👍", "Lo recomiendo"], ["neutro", "😐", "Neutro"], ["no recomendado", "👎", "No lo recomiendo"]]
+        .map(([v, ic, t]) => `<button class="voto ${mio === v ? "on" : ""}" data-votar="${esc(p.nombre)}" data-voto="${v}" title="${t}" aria-pressed="${mio === v}">${ic} ${c[v] || 0}</button>`).join("")}</div>`;
+    };
     const tarjeta = (p) => `<div class="profe">
         <strong>${esc(p.nombre)}</strong>
         <div class="mat-chips">${p.dicta.map((m) => {
@@ -86,20 +134,21 @@
           return `<a class="mat-chip" href="#${encodeURIComponent(m)}/${encodeURIComponent(p.nombre)}" title="Ver sus parciales de ${esc(m)}">${o ? OP[o].icon + " " : ""}${esc(m)}</a>`;
         }).join("")}</div>
         ${p.comentario ? `<p>“${esc(p.comentario)}”</p>` : ""}
+        ${votar(p)}
       </div>`;
     const col = (key, titulo, clase) => `<div class="profes-col ${clase}">
         <h3>${titulo} <span class="count">${grupos[key].length}</span></h3>
         ${grupos[key].length ? grupos[key].map(tarjeta).join("") : `<p class="profes-vacio">Nadie por ahora.</p>`}
       </div>`;
     $("#grid").innerHTML = `
-      <p class="profes-intro">Opiniones de estudiantes, para orientarte. Un profe puede ser recomendado en una materia y no en otra: elegí la materia para ver la opinión que corresponde.</p>
+      <p class="profes-intro">Opiniones de estudiantes, para orientarte. <b>Votá vos también</b> con 👍 😐 👎: cada profe queda en la columna que elija la mayoría. Podés cambiar tu voto cuando quieras (tocá el mismo botón para sacarlo). Elegí una materia para ver la opinión de esa materia.</p>
       <div class="profes-filtro"><label for="prof-mat">Ver opinión para:</label>
         <select id="prof-mat"><option value="">Todas las materias</option>${materias.map((m) => `<option ${m === mat ? "selected" : ""}>${esc(m)}</option>`).join("")}</select></div>
       <div class="profes-cols">
         ${Object.entries(OP).map(([k, v]) => col(k, `${v.icon} ${v.titulo}`, v.clase)).join("")}
       </div>
       ${grupos.depende.length ? `<div class="profes-cols" style="margin-top:14px">${col("depende", "🔀 Depende de la materia", "depende")}</div>` : ""}
-      ${grupos.sin.length ? `<p class="profes-sin">Sin opinión todavía: ${grupos.sin.map((p) => p.dicta.length ? `<a href="#${encodeURIComponent(p.dicta[0])}/${encodeURIComponent(p.nombre)}">${esc(p.nombre)}</a>` : esc(p.nombre)).join(", ")}.</p>` : ""}`;
+      ${grupos.sin.length ? `<div class="profes-cols sin-cols" style="margin-top:14px">${col("sin", "🗳️ Sin opiniones todavía — ¡votá!", "sin-op")}</div>` : ""}`;
     $("#empty").hidden = true;
     $("#prof-mat").onchange = (e) => { state.profMateria = e.target.value; renderProfes(); };
   }
@@ -351,6 +400,8 @@
       else go(m, p);
       return;
     }
+    const vb = e.target.closest("[data-votar]");
+    if (vb) { votarProfe(vb.dataset.votar, vb.dataset.voto); return; }
     const like = e.target.closest("[data-like]");
     if (like) {
       const id = like.dataset.like, was = !!state.liked[id];
@@ -542,7 +593,7 @@
     readHash();
     renderStats();
     render();
-    await loadStats();
-    renderGrid();
+    await Promise.all([loadStats(), loadVotos()]);
+    render();
   })();
 })();

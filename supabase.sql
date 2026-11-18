@@ -64,3 +64,21 @@ values ('envios', 'envios', false, 15728640, array['image/jpeg','image/png','ima
 on conflict (id) do nothing;
 create policy "cualquiera puede subir a envios" on storage.objects for insert to anon, authenticated
   with check (bucket_id = 'envios' and (storage.foldername(name))[1] = 'pendientes');
+
+-- Votos de profesores (1 voto por navegador y profe; se lee solo el resumen)
+create table if not exists public.votos_profes (
+  profesor text not null check (char_length(profesor) between 1 and 120), votante uuid not null,
+  voto text not null check (voto in ('recomendado','neutro','no recomendado')), actualizado timestamptz not null default now(),
+  primary key (profesor, votante));
+alter table public.votos_profes enable row level security;
+create or replace function public.votar_profe(p_profesor text, p_votante uuid, p_voto text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if p_voto is null then delete from votos_profes where profesor = p_profesor and votante = p_votante;
+  else insert into votos_profes (profesor, votante, voto) values (p_profesor, p_votante, p_voto)
+       on conflict (profesor, votante) do update set voto = excluded.voto, actualizado = now();
+  end if;
+end $$;
+create or replace function public.resumen_votos() returns table (profesor text, voto text, cantidad bigint)
+language sql stable security definer set search_path = public as $$ select profesor, voto, count(*) from votos_profes group by profesor, voto $$;
+grant execute on function public.votar_profe(text, uuid, text), public.resumen_votos() to anon, authenticated;
