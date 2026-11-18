@@ -39,7 +39,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 ### 📖 Materias disponibles
 
 <!-- MATERIAS:START -->
-**142 documentos en 20 materias** (se actualiza solo cada vez que se publica).
+**179 documentos en 21 materias** (se actualiza solo cada vez que se publica).
 
 | Materia | Documentos | Profesores |
 |---|---:|---|
@@ -56,8 +56,9 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 | Análisis Matemático IIIa | 16 | ?? |
 | Aprendizaje de Máquina | 6 | ?? |
 | Aprendizaje por Refuerzo | 2 | ?? |
-| Arquitectura de Computadoras | 4 | Jorge Echevarria |
+| Arquitectura de Computadoras | 38 | Fabio Bruschetti, Jorge Echevarria |
 | Arquitectura Web | 4 | ?? |
+| Auditoría de Sistemas | 3 | ?? |
 | Derecho Aplicado a la Informática | 1 | Claudio Alberto Schifer |
 | Estructura de Datos y Algoritmos | 3 | Fabiana Daian |
 | Introducción a la Programación | 1 | Agustina Jurgiel |
