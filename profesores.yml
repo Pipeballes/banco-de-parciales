@@ -21,7 +21,7 @@
 María Blanco:
   general: neutro
   materias:
-    Administración de Datos I:
+    Base de Datos y Administración de Datos I:
   comentario: Neutro, tirando a recomendable.
 
 Juan la Cruz Valladares:
@@ -189,7 +189,7 @@ Mercedes Blanco:
 Laura Lazzati:
   general: no recomendado
   materias:
-    Administración de Datos I:
+    Base de Datos y Administración de Datos I:
   comentario:
 
 Guillermo Puyau:
@@ -217,4 +217,10 @@ Fabiana Daian:
   materias:
     Álgebra:
     Estructura de Datos y Algoritmos:
+  comentario:
+
+Alex Nemirovsky:
+  general:
+  materias:
+    Base de Datos y Administración de Datos I:
   comentario:

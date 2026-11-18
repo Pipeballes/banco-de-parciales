@@ -22,7 +22,7 @@
 
 ## 👋 Sobre mí
 
-¡Hola! Soy **Felipe**, estudiante de **Ingeniería en la Universidad de Palermo**.
+¡Hola! Soy **Felipe**, estudiante de **Ingeniería en Informática en la Universidad de Palermo**.
 
 Armé este banco porque sé lo que cuesta conseguir parciales viejos para practicar antes de un examen. **Mi objetivo es ayudar a la mayor cantidad de gente que esté en Ingeniería**: que cualquiera pueda entrar, encontrar el parcial de su materia y de su profesor, y llegar mejor preparado.
 
@@ -43,11 +43,10 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 ### 📖 Materias disponibles
 
 <!-- MATERIAS:START -->
-**198 documentos en 23 materias** (se actualiza solo cada vez que se publica).
+**198 documentos en 22 materias** (se actualiza solo cada vez que se publica).
 
 | Materia | Documentos | Profesores |
 |---|---:|---|
-| Administración de Datos I | 5 | Laura Lazzati, María Blanco |
 | Administración de Proyectos | 10 | Pablo Werner |
 | Álgebra | 9 | Fabiana Daian, Juan la Cruz Valladares |
 | Álgebra Lineal | 17 | ?? |
@@ -63,7 +62,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 | Arquitectura de Computadoras | 38 | Fabio Bruschetti, Jorge Echevarria |
 | Arquitectura Web | 4 | ?? |
 | Auditoría de Sistemas | 3 | ?? |
-| Bases de Datos | 13 | María Blanco |
+| Base de Datos y Administración de Datos I | 18 | Laura Lazzati, María Blanco |
 | Big Data | 6 | ?? |
 | Derecho Aplicado a la Informática | 1 | Claudio Alberto Schifer |
 | Estructura de Datos y Algoritmos | 3 | Fabiana Daian |
