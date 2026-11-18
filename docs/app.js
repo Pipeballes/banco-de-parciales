@@ -85,28 +85,41 @@
     "no recomendado": { icon: "❌", titulo: "No recomendados", clase: "no-recomendado" },
   };
   const profeInfo = (nombre) => state.profes.find((p) => norm(p.nombre) === norm(nombre));
-  // Opinión para una materia: la de esa materia si existe, si no la general
-  // La opinión inicial (profesores.yml) cuenta como 1 voto; después manda lo que vote la mayoría
+  // Opinión para una materia: la de esa materia si existe, si no la general.
+  // La opinión inicial (profesores.yml) cuenta como 1 voto, y un comentario "Neutro, tirando a…" como medio voto
+  // hacia ese lado; después manda lo que vote la gente.
+  const LEAN_RE = /^\s*neutro,?\s*tirando a (no )?recomendable\.?\s*$/i;
+  const leanSemilla = (p) => { const m = (p.comentario || "").match(LEAN_RE); return m ? (m[1] ? "no recomendado" : "recomendado") : null; };
   function conteo(p, materia) {
     const semilla = (materia && p.materias[materia]) || p.general || null;
-    const c = { ...(state.votos[p.nombre] || {}) };
+    const reales = { ...(state.votos[p.nombre] || {}) };
+    const c = { ...reales };
     if (semilla) c[semilla] = (c[semilla] || 0) + 1;
-    return { c, semilla, total: Object.values(c).reduce((a, b) => a + b, 0) };
+    const lean = semilla === "neutro" ? leanSemilla(p) : null;
+    if (lean) c[lean] = (c[lean] || 0) + 0.5;
+    const visibles = { ...reales };   // lo que se muestra en los botones: votos de la gente + la opinión inicial
+    if (semilla) visibles[semilla] = (visibles[semilla] || 0) + 1;
+    return { c, visibles, semilla, total: Object.values(c).reduce((a, b) => a + b, 0) };
   }
+  // Reglas: si los 👍 son mayoría → recomendado; si los 👎 → no recomendado; si no (gana neutro o hay empate) → neutro,
+  // y entre 👍 y 👎 decide hacia dónde tira: "Neutro, tirando a recomendable" / "…a no recomendable".
   function resultado(p, materia) {
-    const { c, semilla, total } = conteo(p, materia);
+    const { c, total } = conteo(p, materia);
     if (!total) return null;
-    const max = Math.max(...Object.values(c));
-    const empatados = Object.keys(c).filter((k) => c[k] === max);
-    return empatados.includes(semilla) ? semilla : empatados.includes("neutro") ? "neutro" : empatados[0];
+    const R = c["recomendado"] || 0, N = c["neutro"] || 0, D = c["no recomendado"] || 0;
+    if (R > N && R > D) return { op: "recomendado" };
+    if (D > N && D > R) return { op: "no recomendado" };
+    return { op: "neutro", lean: R > D ? "recomendable" : D > R ? "no recomendable" : null };
   }
+  const etiqueta = (r) => !r ? "" : r.op === "neutro" ? (r.lean ? `Neutro, tirando a ${r.lean}` : "Neutro") : r.op === "recomendado" ? "Recomendado" : "No recomendado";
+  const iconoDe = (r) => r.op === "neutro" && r.lean ? (r.lean === "recomendable" ? "🟢" : "🟠") : OP[r.op].icon;
   function opinionDe(nombre, materia) {
     const p = profeInfo(nombre);
     return p ? resultado(p, materia) : null;
   }
   const opIcon = (nombre, materia) => {
-    const o = opinionDe(nombre, materia);
-    return o ? `<span class="op" title="${esc(OP[o].titulo.replace(/s$/, ""))}">${OP[o].icon}</span>` : "";
+    const r = opinionDe(nombre, materia);
+    return r ? `<span class="op" title="${esc(etiqueta(r))}">${iconoDe(r)}</span>` : "";
   };
 
   function renderProfes() {
@@ -117,13 +130,13 @@
     for (const p of lista) {
       const tieneVotos = Object.keys(state.votos[p.nombre] || {}).length > 0;
       const porMateria = !mat && !p.general && Object.keys(p.materias).length;
-      const o = porMateria && !tieneVotos ? null : resultado(p, mat);
-      if (o) grupos[o].push(p);
+      const r = porMateria && !tieneVotos ? null : resultado(p, mat);
+      if (r) grupos[r.op].push(p);
       else if (porMateria) grupos.depende.push(p);
       else grupos.sin.push(p);
     }
     const votar = (p) => {
-      const { c } = conteo(p, mat), mio = state.misVotos[p.nombre];
+      const { visibles: c } = conteo(p, mat), mio = state.misVotos[p.nombre];
       return `<div class="votar" role="group" aria-label="Votar a ${esc(p.nombre)}">${[["recomendado", "👍", "Lo recomiendo"], ["neutro", "😐", "Neutro"], ["no recomendado", "👎", "No lo recomiendo"]]
         .map(([v, ic, t]) => `<button class="voto ${mio === v ? "on" : ""}" data-votar="${esc(p.nombre)}" data-voto="${v}" title="${t}" aria-pressed="${mio === v}">${ic} ${c[v] || 0}</button>`).join("")}</div>`;
     };
@@ -133,7 +146,8 @@
           const o = p.materias[m] || p.general;
           return `<a class="mat-chip" href="#${encodeURIComponent(m)}/${encodeURIComponent(p.nombre)}" title="Ver sus parciales de ${esc(m)}">${o ? OP[o].icon + " " : ""}${esc(m)}</a>`;
         }).join("")}</div>
-        ${p.comentario ? `<p>“${esc(p.comentario)}”</p>` : ""}
+        ${(() => { const r = resultado(p, mat); return r ? `<div class="op-label">${iconoDe(r)} ${esc(etiqueta(r))}</div>` : ""; })()}
+        ${p.comentario && !LEAN_RE.test(p.comentario) ? `<p>“${esc(p.comentario)}”</p>` : ""}
         ${votar(p)}
       </div>`;
     const col = (key, titulo, clase) => `<div class="profes-col ${clase}">
@@ -141,7 +155,7 @@
         ${grupos[key].length ? grupos[key].map(tarjeta).join("") : `<p class="profes-vacio">Nadie por ahora.</p>`}
       </div>`;
     $("#grid").innerHTML = `
-      <p class="profes-intro">Opiniones de estudiantes, para orientarte. <b>Votá vos también</b> con 👍 😐 👎: cada profe queda en la columna que elija la mayoría. Podés cambiar tu voto cuando quieras (tocá el mismo botón para sacarlo). Elegí una materia para ver la opinión de esa materia.</p>
+      <p class="profes-intro">Opiniones de estudiantes, para orientarte. <b>Votá vos también</b> con 👍 😐 👎: si gana 👍 queda recomendado, si gana 👎 no recomendado, y si gana 😐 queda neutro, tirando hacia el lado que tenga más 👍 o 👎. Los votos se actualizan en vivo, sin recargar. Podés cambiar tu voto cuando quieras (tocá el mismo botón para sacarlo). Elegí una materia para ver la opinión de esa materia.</p>
       <div class="profes-filtro"><label for="prof-mat">Ver opinión para:</label>
         <select id="prof-mat"><option value="">Todas las materias</option>${materias.map((m) => `<option ${m === mat ? "selected" : ""}>${esc(m)}</option>`).join("")}</select></div>
       <div class="profes-cols">
@@ -621,5 +635,44 @@
     render();
     await Promise.all([loadStats(), loadVotos()]);
     render();
+    enVivo();
   })();
+
+  // ---------- En vivo: likes, descargas y votos sin recargar la página ----------
+  function reRenderEnVivo() {
+    if (state.vista === "profes") renderProfes();
+    else if (state.vista === "docs") { renderGrid(); renderSidebar(); }
+    // En "Subir" y "Sugerencias" no se toca nada para no borrar lo que la persona está escribiendo
+  }
+  let pendiente = null;
+  const programar = () => { clearTimeout(pendiente); pendiente = setTimeout(reRenderEnVivo, 150); };
+  function enVivo() {
+    if (!REMOTE) return;
+    let realtimeOk = false;
+    // 1) Supabase Realtime (si el proyecto lo tiene habilitado): llega al instante
+    try {
+      if (window.supabase && window.supabase.createClient) {
+        const sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
+        sb.channel("en-vivo")
+          .on("postgres_changes", { event: "*", schema: "public", table: "stats" }, ({ new: r }) => {
+            if (r && r.doc_id) { state.stats[r.doc_id] = { ...(state.stats[r.doc_id] || {}), likes: r.likes, descargas: r.descargas }; programar(); }
+          })
+          .on("postgres_changes", { event: "*", schema: "public", table: "votos_resumen" }, ({ new: r }) => {
+            if (r && r.profesor) { (state.votos[r.profesor] ||= {})[r.voto] = Number(r.cantidad); programar(); }
+          })
+          .subscribe((st) => { realtimeOk = st === "SUBSCRIBED"; });
+      }
+    } catch (e) { console.warn("Realtime no disponible", e); }
+    // 2) Respaldo: cada pocos segundos se vuelve a pedir el resumen (solo con la pestaña visible)
+    const firma = () => JSON.stringify([state.stats, state.votos]);
+    let ultimo = firma(), ticks = 0;
+    setInterval(async () => {
+      if (document.hidden) return;
+      ticks++;
+      if (realtimeOk && ticks % 8) return;   // con Realtime andando, solo un control cada ~30 s
+      await Promise.all([loadStats(), loadVotos()]);
+      const f = firma();
+      if (f !== ultimo) { ultimo = f; reRenderEnVivo(); }
+    }, 4000);
+  }
 })();
