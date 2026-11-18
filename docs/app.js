@@ -169,8 +169,8 @@
     $("#sidebar").innerHTML =
       `<button class="side-all ${!state.materia && state.vista === "docs" ? "active-nav" : ""}" data-m="">Todas las materias <span class="count">${state.docs.length}</span></button>` +
       materias.map((m) => {
-        // "??" (profe desconocido) siempre al final
-        const profs = Object.keys(t[m]).sort((a, b) => (a === "??") - (b === "??") || a.localeCompare(b, "es"));
+        // "Otros" (profe desconocido) siempre al final
+        const profs = Object.keys(t[m]).sort((a, b) => (a === "Otros") - (b === "Otros") || a.localeCompare(b, "es"));
         const total = profs.reduce((n, p) => n + t[m][p].length, 0);
         const open = state.materia === m;
         return `<div class="materia ${open ? "open" : ""}">
@@ -202,7 +202,7 @@
     const mats = state.materia ? [] : Object.keys(t).filter((m) => matches(m, q)).sort((a, b) => a.localeCompare(b, "es"));
     const profs = [];
     for (const m of (state.materia ? [state.materia] : Object.keys(t)))
-      for (const p of Object.keys(t[m])) if (p !== "??" && matches(p, q) && !(state.profesor && p === state.profesor)) profs.push([m, p]);
+      for (const p of Object.keys(t[m])) if (p !== "Otros" && matches(p, q) && !(state.profesor && p === state.profesor)) profs.push([m, p]);
     // Archivos: solo los que coinciden por su propio nombre, no por estar dentro de una materia/profe que ya mostramos como carpeta
     const tapados = new Set([...mats, ...profs.map(([m, p]) => m + "|" + p)]);
     const sueltos = list.filter((d) => !tapados.has(d.materia) && !tapados.has(d.materia + "|" + d.profesor));
@@ -247,7 +247,7 @@
       <div class="card-top"><h3>${esc(d.titulo)}</h3><span class="badge ${esc(d.tipo)}">${esc(d.tipo)}</span></div>
       <div class="meta">
         <div>📘 ${esc(d.materia)}</div>
-        <div>👤 ${d.profesor === "??" ? '<span title="Profesor desconocido">??</span>' : esc(d.profesor) + opIcon(d.profesor, d.materia)}</div>
+        <div>👤 ${d.profesor === "Otros" ? '<span title="Profesor desconocido">Otros</span>' : esc(d.profesor) + opIcon(d.profesor, d.materia)}</div>
         ${fechaTexto(d) ? `<div>📅 ${esc(fechaTexto(d))}</div>` : ""}
         <div>📄 ${d.paginas ? d.paginas + " pág. · " : ""}${size(d.tamano)}${s.descargas ? ` · ⬇ ${s.descargas}` : ""}</div>
       </div>
@@ -281,7 +281,7 @@
     </div>`;
   }
   const folderTile = (nombre, n, m, p) => `<button class="tile" data-m="${esc(m)}"${p !== undefined ? ` data-p="${esc(p)}"` : ""}>
-      <span class="tile-icon">📁</span><span class="tile-text"><span class="tile-name">${esc(nombre)}${p !== undefined && p !== "??" ? opIcon(p, m) : ""}</span></span>
+      <span class="tile-icon">📁</span><span class="tile-text"><span class="tile-name">${esc(nombre)}${p !== undefined && p !== "Otros" ? opIcon(p, m) : ""}</span></span>
       <span class="count">${n}</span></button>`;
   const asTiles = (docs, render) => render === fileTile ? `<div class="tiles">${docs.map(fileTile).join("")}</div>` : `<div class="grid">${docs.map(render).join("")}</div>`;
 
@@ -294,7 +294,7 @@
       }).join("")}</div>`;
     }
     if (!state.profesor) {  // Materia: una carpeta por profe
-      const profs = [...new Set(list.map((d) => d.profesor))].sort((a, b) => (a === "??") - (b === "??") || a.localeCompare(b, "es"));
+      const profs = [...new Set(list.map((d) => d.profesor))].sort((a, b) => (a === "Otros") - (b === "Otros") || a.localeCompare(b, "es"));
       return `<h3 class="tiles-title">Profesores</h3><div class="tiles">${profs.map((p) =>
         folderTile(p, list.filter((d) => d.profesor === p).length, state.materia, p)).join("")}</div>`;
     }
