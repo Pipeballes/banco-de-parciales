@@ -43,7 +43,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 ### 📖 Materias disponibles
 
 <!-- MATERIAS:START -->
-**324 documentos en 35 materias** (se actualiza solo cada vez que se publica).
+**332 documentos en 36 materias** (se actualiza solo cada vez que se publica).
 
 | Materia | Documentos | Profesores |
 |---|---:|---|
@@ -80,6 +80,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 | Inteligencia Artificial | 4 | ?? |
 | Introducción a la Ingeniería de Software | 14 | ?? |
 | Introducción a la Programación | 1 | Agustina Jurgiel |
+| Introducción a las Comunicaciones | 8 | ?? |
 | Sistemas Digitales I | 3 | Ignacio Ziccardi |
 | Sistemas y Métodos | 3 | María Abeledo |
 <!-- MATERIAS:END -->
