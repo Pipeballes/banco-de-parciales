@@ -211,3 +211,10 @@ María Carmona:
   general: neutro
   materias: {}
   comentario: Neutro, tirando a recomendable.
+
+Fabiana Daian:
+  general: no recomendado
+  materias:
+    Álgebra:
+    Estructura de Datos y Algoritmos:
+  comentario:

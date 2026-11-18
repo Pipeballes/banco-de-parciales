@@ -43,7 +43,8 @@
 
   // ---------- Navegación (hash: #materia/profesor) ----------
   function readHash() {
-    if (location.hash === "#profesores") { state.vista = "profes"; state.materia = state.profesor = ""; return; }
+    const especiales = { "#profesores": "profes", "#subir": "subir", "#sugerencias": "sugerir" };
+    if (especiales[location.hash]) { state.vista = especiales[location.hash]; state.materia = state.profesor = ""; return; }
     state.vista = "docs";
     const [m = "", p = ""] = location.hash.slice(1).split("/").map(decodeURIComponent);
     state.materia = m; state.profesor = p;
@@ -136,9 +137,31 @@
   function renderCrumbs() {
     const parts = [`<a href="#">Inicio</a>`];
     if (state.vista === "profes") parts.push(`<span>Profesores</span>`);
+    if (state.vista === "subir") parts.push(`<span>Subir parcial</span>`);
+    if (state.vista === "sugerir") parts.push(`<span>Sugerencias</span>`);
     if (state.materia) parts.push(`<a href="#${encodeURIComponent(state.materia)}">${esc(state.materia)}</a>`);
     if (state.profesor) parts.push(`<span>${esc(state.profesor)}</span>`);
     $("#crumbs").innerHTML = parts.join(" &nbsp;/&nbsp; ");
+  }
+
+  // Todas las palabras de la búsqueda tienen que aparecer (en cualquier orden)
+  const matches = (texto, q) => { const t = norm(texto); return q.split(/\s+/).every((w) => t.includes(w)); };
+
+  // Buscando desde el inicio: primero las carpetas de materias y profes que coinciden, después los archivos sueltos
+  function resultadosBusqueda(list) {
+    const q = norm(state.q.trim()), t = tree();
+    const mats = state.materia ? [] : Object.keys(t).filter((m) => matches(m, q)).sort((a, b) => a.localeCompare(b, "es"));
+    const profs = [];
+    for (const m of (state.materia ? [state.materia] : Object.keys(t)))
+      for (const p of Object.keys(t[m])) if (p !== "??" && matches(p, q) && !(state.profesor && p === state.profesor)) profs.push([m, p]);
+    // Archivos: solo los que coinciden por su propio nombre, no por estar dentro de una materia/profe que ya mostramos como carpeta
+    const tapados = new Set([...mats, ...profs.map(([m, p]) => m + "|" + p)]);
+    const sueltos = list.filter((d) => !tapados.has(d.materia) && !tapados.has(d.materia + "|" + d.profesor));
+    let html = "";
+    if (mats.length) html += `<h3 class="tiles-title">Materias</h3><div class="tiles">${mats.map((m) => folderTile(m, Object.values(t[m]).flat().length, m)).join("")}</div>`;
+    if (profs.length) html += `<h3 class="tiles-title">Profesores</h3><div class="tiles">${profs.map(([m, p]) => folderTile(`${p} — ${m}`, t[m][p].length, m, p)).join("")}</div>`;
+    if (sueltos.length) html += `${html ? `<h3 class="tiles-title">Archivos</h3>` : ""}${state.modo === "carpetas" ? asTiles(sueltos, fileTile) : `<div class="grid">${sueltos.map(card).join("")}</div>`}`;
+    return { html, total: mats.length + profs.length + sueltos.length };
   }
 
   function visibleDocs() {
@@ -147,7 +170,7 @@
       (!state.materia || d.materia === state.materia) &&
       (!state.profesor || d.profesor === state.profesor) &&
       (!state.tipo || d.tipo === state.tipo) &&
-      (!q || norm(`${d.titulo} ${d.materia} ${d.profesor} ${d.tipo} ${d.anio || ""}`).includes(q)));
+      (!q || matches(`${d.titulo} ${d.materia} ${d.profesor} ${d.tipo} ${d.anio || ""}`, q)));
     const st = (d, k) => (state.stats[d.id] || {})[k] || 0;
     const sorters = {
       recientes: (a, b) => cuando(b).localeCompare(cuando(a)),
@@ -263,9 +286,18 @@
 
   function renderGrid() {
     if (state.vista === "profes") return renderProfes();
+    if (state.vista === "subir") return renderSubir();
+    if (state.vista === "sugerir") return renderSugerir();
     const list = visibleDocs();
     document.querySelectorAll(".view-toggle button").forEach((b) => b.classList.toggle("on", b.dataset.modo === state.modo));
     const buscando = !!state.q.trim();
+    if (buscando && !state.profesor) {
+      const r = resultadosBusqueda(list);
+      $("#grid").innerHTML = r.html;
+      $("#empty").hidden = r.total > 0;
+      $("#empty").textContent = "No se encontró nada con esa búsqueda.";
+      return;
+    }
     if (state.modo === "carpetas") {
       // Estilo Drive: carpetas de materias → carpetas de profes → archivos. Buscando: archivos sueltos
       $("#grid").innerHTML = buscando ? asTiles(list, fileTile) : carpetas(list);
@@ -299,11 +331,13 @@
 
   function render() {
     renderSidebar(); renderCrumbs();
-    const profes = state.vista === "profes";
-    $("#toolbar").hidden = profes;
+    const profes = state.vista === "profes", extra = state.vista !== "docs";
+    $("#toolbar").hidden = extra;
     $("#nav-profes").classList.toggle("active", profes);
-    document.body.classList.toggle("vista-profes", profes);
-    if (profes) return renderProfes();
+    $("#nav-subir").classList.toggle("active", state.vista === "subir");
+    $("#nav-sugerencias").classList.toggle("active", state.vista === "sugerir");
+    document.body.classList.toggle("vista-profes", extra);
+    if (extra) return renderGrid();
     renderChips(); renderGrid();
   }
 
@@ -312,6 +346,7 @@
     const nav = e.target.closest("[data-m]");
     if (nav) {
       const m = nav.dataset.m, p = nav.dataset.p || "";
+      if (state.q.trim() && m) { state.q = ""; $("#q").value = ""; }
       if (!p && m && state.materia === m && !state.profesor) go(""); // toggle
       else go(m, p);
       return;
@@ -331,6 +366,99 @@
     const view = e.target.closest("[data-view]");
     if (view) openViewer(state.docs.find((x) => x.id === view.dataset.view));
   });
+
+  // ---------- Subir parciales y sugerencias (quedan guardados en Supabase para revisarlos) ----------
+  const storage = (path, opts) => fetch(`${CFG.supabaseUrl}/storage/v1/object/${path}`, {
+    ...opts, headers: { apikey: CFG.supabaseAnonKey, ...(CFG.supabaseAnonKey.startsWith("sb_") ? {} : { Authorization: `Bearer ${CFG.supabaseAnonKey}` }), ...(opts.headers || {}) },
+  });
+  const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+  const limpio = (n) => norm(n).replace(/[^a-z0-9._-]+/g, "-").slice(-80) || "archivo";
+  const sinBackend = `<p class="form-msg err">Esta función necesita la base de datos configurada.</p>`;
+
+  function renderSubir() {
+    const materias = Object.keys(tree()).sort((a, b) => a.localeCompare(b, "es"));
+    $("#empty").hidden = true;
+    $("#grid").innerHTML = `<section class="form-page">
+      <h2>📤 Subí tus parciales</h2>
+      <p>Mandanos fotos o PDFs de parciales, finales, recuperatorios o apuntes de la <b>UP</b>. Los revisamos, tapamos los datos personales y los ordenamos en la página.</p>
+      <p class="aviso">🔒 Si podés, <b>tapá tu nombre, legajo y firma</b> antes de sacar la foto. Igual los revisamos antes de publicar: nada se publica sin que lo veamos.</p>
+      ${REMOTE ? `<form id="form-subir" class="form">
+        <label>Materia *<input name="materia" list="lista-materias" required maxlength="120" placeholder="Ej: Álgebra"></label>
+        <datalist id="lista-materias">${materias.map((m) => `<option value="${esc(m)}">`).join("")}</datalist>
+        <div class="form-row">
+          <label>Profesor <small>(en lo posible)</small><input name="profesor" maxlength="120" placeholder="Ej: Juan Pérez"></label>
+          <label>Año del examen <small>(en lo posible)</small><input name="anio" maxlength="20" inputmode="numeric" placeholder="Ej: 2026"></label>
+        </div>
+        <label>Qué es
+          <select name="tipo"><option>1er Parcial</option><option>2do Parcial</option><option>1er Recuperatorio</option><option>2do Recuperatorio</option><option>Final</option><option>Apunte / resumen</option><option>Otro</option></select></label>
+        <label>Archivos * <small>(fotos o PDF, hasta 15 MB cada uno, máximo 20)</small>
+          <input name="archivos" type="file" multiple required accept="image/*,application/pdf"></label>
+        <label>Comentario <small>(opcional: tema, fecha exacta, si tiene resolución…)</small><textarea name="comentario" maxlength="1000" rows="3"></textarea></label>
+        <button class="btn" type="submit">Enviar</button>
+        <div id="subir-msg" aria-live="polite"></div>
+      </form>` : sinBackend}
+    </section>`;
+    const f = $("#form-subir"); if (!f) return;
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const msg = $("#subir-msg"), btn = f.querySelector("button");
+      const files = [...f.archivos.files];
+      if (files.length > 20) { msg.innerHTML = `<p class="form-msg err">Máximo 20 archivos por envío.</p>`; return; }
+      const grande = files.find((x) => x.size > 15 * 1048576);
+      if (grande) { msg.innerHTML = `<p class="form-msg err">"${esc(grande.name)}" pesa más de 15 MB.</p>`; return; }
+      btn.disabled = true;
+      try {
+        const carpeta = `pendientes/${new Date().toISOString().slice(0, 10)}-${uid()}`, rutas = [];
+        for (const [i, file] of files.entries()) {
+          msg.innerHTML = `<p class="form-msg">Subiendo ${i + 1} de ${files.length}…</p>`;
+          const ruta = `${carpeta}/${String(i + 1).padStart(2, "0")}-${limpio(file.name)}`;
+          const r = await storage(`envios/${ruta}`, { method: "POST", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } });
+          if (!r.ok) throw new Error(`No se pudo subir "${file.name}" (${r.status}). Solo se aceptan fotos y PDF.`);
+          rutas.push(ruta);
+        }
+        const v = (k) => f[k].value.trim() || null;
+        const r = await api("envios", { method: "POST", headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ materia: v("materia"), profesor: v("profesor"), anio: v("anio"), tipo: v("tipo"), comentario: v("comentario"), archivos: rutas }) });
+        if (!r.ok) throw new Error("No se pudo guardar el envío.");
+        f.reset();
+        msg.innerHTML = `<p class="form-msg ok">¡Gracias! 🙌 Recibimos ${rutas.length} archivo(s). Los vamos a revisar y subir a la página.</p>`;
+      } catch (err) {
+        msg.innerHTML = `<p class="form-msg err">${esc(err.message)} Probá de nuevo en un rato.</p>`;
+      } finally { btn.disabled = false; }
+    };
+  }
+
+  function renderSugerir() {
+    $("#empty").hidden = true;
+    $("#grid").innerHTML = `<section class="form-page">
+      <h2>💡 ¿Cómo mejoramos la página?</h2>
+      <p>Contanos qué <b>agregarías</b>, qué <b>cambiarías</b> o qué <b>sacarías</b>. Todo sirve: materias que faltan, cosas que no se entienden, errores, ideas nuevas.</p>
+      ${REMOTE ? `<form id="form-sugerir" class="form">
+        <fieldset class="opciones"><legend>Tu idea es para…</legend>
+          <label><input type="radio" name="tipo" value="agregar" checked> ➕ Agregar algo</label>
+          <label><input type="radio" name="tipo" value="cambiar"> ✏️ Cambiar algo</label>
+          <label><input type="radio" name="tipo" value="sacar"> ➖ Sacar algo</label>
+          <label><input type="radio" name="tipo" value="otro"> 💬 Otro</label>
+        </fieldset>
+        <label>Tu sugerencia *<textarea name="texto" required minlength="3" maxlength="2000" rows="5" placeholder="Ej: estaría bueno poder filtrar por año…"></textarea></label>
+        <p class="aviso">Es anónimo: no pongas datos personales.</p>
+        <button class="btn" type="submit">Enviar sugerencia</button>
+        <div id="sugerir-msg" aria-live="polite"></div>
+      </form>` : sinBackend}
+    </section>`;
+    const f = $("#form-sugerir"); if (!f) return;
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const msg = $("#sugerir-msg"), btn = f.querySelector("button"); btn.disabled = true;
+      try {
+        const r = await api("sugerencias", { method: "POST", headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ tipo: f.tipo.value, texto: f.texto.value.trim() }) });
+        if (!r.ok) throw new Error();
+        f.reset(); msg.innerHTML = `<p class="form-msg ok">¡Gracias por la idea! 💜 La vamos a leer.</p>`;
+      } catch { msg.innerHTML = `<p class="form-msg err">No se pudo enviar. Probá de nuevo en un rato.</p>`; }
+      finally { btn.disabled = false; }
+    };
+  }
 
   // ---------- Visor de PDF (PDF.js: funciona también en Android/iPhone) ----------
   let pdfjsReady, viewToken = 0;
@@ -383,7 +511,11 @@
     const b = e.target.closest("[data-modo]"); if (!b) return;
     state.modo = b.dataset.modo; save("modo", state.modo); renderGrid();
   });
-  $("#q").oninput = (e) => { state.q = e.target.value; renderGrid(); };
+  $("#q").oninput = (e) => {
+    state.q = e.target.value;
+    if (state.vista !== "docs" && state.q.trim()) { go(""); return; }
+    renderGrid();
+  };
   window.addEventListener("hashchange", () => { readHash(); render(); });
 
   // Tema
