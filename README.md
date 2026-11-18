@@ -43,7 +43,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 ### 📖 Materias disponibles
 
 <!-- MATERIAS:START -->
-**216 documentos en 24 materias** (se actualiza solo cada vez que se publica).
+**220 documentos en 26 materias** (se actualiza solo cada vez que se publica).
 
 | Materia | Documentos | Profesores |
 |---|---:|---|
@@ -66,7 +66,9 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 | Big Data | 6 | ?? |
 | Cálculo Numérico | 13 | ?? |
 | Computación Aplicada | 5 | Cristian Damiano, Matías Chiesa |
+| Comunicación Técnica y Profesional | 1 | ?? |
 | Derecho Aplicado a la Informática | 1 | Claudio Alberto Schifer |
+| Derecho y Ética en TI | 3 | ?? |
 | Estructura de Datos y Algoritmos | 3 | Fabiana Daian |
 | Introducción a la Programación | 1 | Agustina Jurgiel |
 | Sistemas Digitales I | 3 | Ignacio Ziccardi |
