@@ -43,7 +43,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 ### 📖 Materias disponibles
 
 <!-- MATERIAS:START -->
-**310 documentos en 34 materias** (se actualiza solo cada vez que se publica).
+**324 documentos en 35 materias** (se actualiza solo cada vez que se publica).
 
 | Materia | Documentos | Profesores |
 |---|---:|---|
@@ -78,6 +78,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 | Fundamentos de Inteligencia Artificial | 16 | ?? |
 | Ingeniería de Características | 2 | ?? |
 | Inteligencia Artificial | 4 | ?? |
+| Introducción a la Ingeniería de Software | 14 | ?? |
 | Introducción a la Programación | 1 | Agustina Jurgiel |
 | Sistemas Digitales I | 3 | Ignacio Ziccardi |
 | Sistemas y Métodos | 3 | María Abeledo |
