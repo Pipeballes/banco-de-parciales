@@ -43,7 +43,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 ### 📖 Materias disponibles
 
 <!-- MATERIAS:START -->
-**220 documentos en 26 materias** (se actualiza solo cada vez que se publica).
+**236 documentos en 27 materias** (se actualiza solo cada vez que se publica).
 
 | Materia | Documentos | Profesores |
 |---|---:|---|
@@ -69,7 +69,8 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 | Comunicación Técnica y Profesional | 1 | ?? |
 | Derecho Aplicado a la Informática | 1 | Claudio Alberto Schifer |
 | Derecho y Ética en TI | 3 | ?? |
-| Estructura de Datos y Algoritmos | 3 | Fabiana Daian |
+| DevOps | 3 | ?? |
+| Estructura de Datos y Algoritmos | 16 | Adrián Nisim, Fabiana Daian, Marcela Toba |
 | Introducción a la Programación | 1 | Agustina Jurgiel |
 | Sistemas Digitales I | 3 | Ignacio Ziccardi |
 | Sistemas y Métodos | 3 | María Abeledo |
