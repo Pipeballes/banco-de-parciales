@@ -43,7 +43,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 ### 📖 Materias disponibles
 
 <!-- MATERIAS:START -->
-**250 documentos en 29 materias** (se actualiza solo cada vez que se publica).
+**275 documentos en 30 materias** (se actualiza solo cada vez que se publica).
 
 | Materia | Documentos | Profesores |
 |---|---:|---|
@@ -71,6 +71,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 | Derecho y Ética en TI | 3 | ?? |
 | DevOps | 3 | ?? |
 | Estructura de Datos y Algoritmos | 16 | Adrián Nisim, Fabiana Daian, Marcela Toba |
+| Física I | 25 | Ana Leyes |
 | Fundamentos de Data Science | 8 | Carlos Gimenez |
 | Fundamentos de Economía y Finanzas | 6 | ?? |
 | Introducción a la Programación | 1 | Agustina Jurgiel |
