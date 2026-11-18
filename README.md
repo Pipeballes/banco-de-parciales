@@ -53,9 +53,3 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 3. Subilas en la sección [**📤 Subir parcial**](https://pipeballes.github.io/banco-de-parciales/#subir) de la página, abrí un [**Issue acá en GitHub**](https://github.com/Pipeballes/banco-de-parciales/issues/new) o mandámelas por mensaje.
 
 > ⚠️ **No subas fotos con tu nombre a la vista.** Lo que se sube a GitHub queda en el historial aunque después se borre. Mandámelas y yo me encargo de taparlo antes de publicarlas.
-<div align="center">
-<br>
-
-Hecho con ❤️ para estudiantes de Ingeniería.
-
-</div>
