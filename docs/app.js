@@ -285,6 +285,30 @@
       <span class="count">${n}</span></button>`;
   const asTiles = (docs, render) => render === fileTile ? `<div class="tiles">${docs.map(fileTile).join("")}</div>` : `<div class="grid">${docs.map(render).join("")}</div>`;
 
+  // Inicio en vista lista: una tarjeta por materia, con el mismo estilo que los documentos
+  function materiaCards(list) {
+    const por = {};
+    for (const d of list) (por[d.materia] ||= []).push(d);
+    const plural = { Parcial: "parciales", Recuperatorio: "recuperatorios", Final: "finales", Apunte: "apuntes", Otro: "otros" };
+    return `<div class="grid">${Object.keys(por).sort((a, b) => a.localeCompare(b, "es")).map((m) => {
+      const docs = por[m], n = {};
+      for (const d of docs) n[d.tipo] = (n[d.tipo] || 0) + 1;
+      const profs = new Set(docs.map((d) => d.profesor).filter((p) => p !== "Otros")).size;
+      const anios = docs.map((d) => d.anio).filter(Boolean);
+      const detalle = Object.keys(plural).filter((k) => n[k]).map((k) => `${n[k]} ${n[k] === 1 ? k.toLowerCase() : plural[k]}`).join(" · ");
+      return `<article class="card card-materia">
+        <div class="card-top"><h3>${esc(m)}</h3><span class="badge">Materia</span></div>
+        <div class="meta">
+          <div>📄 ${docs.length} documento${docs.length === 1 ? "" : "s"}</div>
+          <div>🗂 ${esc(detalle)}</div>
+          <div>👤 ${profs ? `${profs} profesor${profs === 1 ? "" : "es"}` : "Profesor desconocido"}</div>
+          ${anios.length ? `<div>📅 ${Math.min(...anios) === Math.max(...anios) ? Math.max(...anios) : `${Math.min(...anios)} – ${Math.max(...anios)}`}</div>` : ""}
+        </div>
+        <div class="actions"><button class="btn small" data-m="${esc(m)}">Ver materia</button></div>
+      </article>`;
+    }).join("")}</div>`;
+  }
+
   function carpetas(list) {
     if (!state.materia) {   // Inicio: una carpeta por materia
       const t = tree();
@@ -352,7 +376,9 @@
       $("#grid").innerHTML = buscando ? asTiles(list, fileTile) : carpetas(list);
     } else {
       // Lista: dentro de una materia se agrupa por año y secciones; en "Todas" o buscando, lista simple
-      $("#grid").innerHTML = state.materia && !buscando ? grouped(list) : `<div class="grid">${list.map(card).join("")}</div>`;
+      // En "Todas" (sin buscar) se muestran las materias como tarjetas, no todos los archivos
+      $("#grid").innerHTML = state.materia && !buscando ? grouped(list)
+        : !buscando ? materiaCards(list) : `<div class="grid">${list.map(card).join("")}</div>`;
     }
     $("#empty").hidden = list.length > 0;
     $("#empty").textContent = state.docs.length ? "No se encontró nada con esos filtros." : "Todavía no hay documentos.";

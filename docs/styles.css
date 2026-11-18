@@ -232,3 +232,4 @@ dialog::backdrop { background: rgba(0,0,0,.55); }
   body.vista-profes .sidebar { display: none; }
   .nav-link span { display: none; }
 }
+.card-materia .meta div { white-space: normal; overflow: visible; }
