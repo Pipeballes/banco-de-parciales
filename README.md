@@ -43,7 +43,7 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 ### 📖 Materias disponibles
 
 <!-- MATERIAS:START -->
-**198 documentos en 22 materias** (se actualiza solo cada vez que se publica).
+**216 documentos en 24 materias** (se actualiza solo cada vez que se publica).
 
 | Materia | Documentos | Profesores |
 |---|---:|---|
@@ -64,6 +64,8 @@ Si te sirvió, dejale un ♥ en la página. Y si tenés parciales para sumar, ¡
 | Auditoría de Sistemas | 3 | ?? |
 | Base de Datos y Administración de Datos I | 18 | Laura Lazzati, María Blanco |
 | Big Data | 6 | ?? |
+| Cálculo Numérico | 13 | ?? |
+| Computación Aplicada | 5 | Cristian Damiano, Matías Chiesa |
 | Derecho Aplicado a la Informática | 1 | Claudio Alberto Schifer |
 | Estructura de Datos y Algoritmos | 3 | Fabiana Daian |
 | Introducción a la Programación | 1 | Agustina Jurgiel |
