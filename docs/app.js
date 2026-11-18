@@ -167,7 +167,7 @@
     const t = tree();
     const materias = Object.keys(t).sort((a, b) => a.localeCompare(b, "es"));
     $("#sidebar").innerHTML =
-      `<button class="side-all ${!state.materia && state.vista === "docs" ? "active-nav" : ""}" data-m="">Todas las materias <span class="count">${state.docs.length}</span></button>` +
+      `<button class="side-all ${!state.materia && state.vista === "docs" ? "active-nav" : ""}" data-m="">Todas las materias <span class="count">${materias.length}</span></button>` +
       materias.map((m) => {
         // "Otros" (profe desconocido) siempre al final
         const profs = Object.keys(t[m]).sort((a, b) => (a === "Otros") - (b === "Otros") || a.localeCompare(b, "es"));
