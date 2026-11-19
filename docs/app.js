@@ -566,6 +566,8 @@
     const token = ++viewToken, box = $("#viewer-pages");
     $("#viewer-title").textContent = `${d.titulo} — ${d.profesor}`;
     const a = $("#viewer-dl"); a.href = d.archivo; a.dataset.dl = d.id;
+    const ia = $("#viewer-ia");
+    if (ia) { ia.hidden = !window.BancoIA; ia.onclick = () => { $("#viewer").close(); window.BancoIA.sobre(d); }; }
     box.innerHTML = `<p class="viewer-msg">Cargando…</p>`;
     $("#viewer").showModal();
     try {
