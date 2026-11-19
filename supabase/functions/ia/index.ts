@@ -7,7 +7,7 @@ import { encodeBase64 } from "jsr:@std/encoding@1.0.5/base64";
 
 const SITIO = "https://pipeballes.github.io/banco-de-parciales/";
 const ORIGENES = ["https://pipeballes.github.io"];
-const MODELO = "claude-opus-5-5";
+const MODELO = "claude-haiku-5-5"; // el más barato
 const MAX_LECTURAS = 3; // PDFs que puede leer por consulta
 const MAX_PDF = 12 * 1024 * 1024;
 
@@ -167,8 +167,6 @@ Deno.serve(async (req) => {
       const r = await anthropic.beta.messages.create({
         model: MODELO,
         max_tokens: 8000,
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
         output_config: { effort: "medium" },
         system: [{ type: "text", text: sistema(materias), cache_control: { type: "ephemeral" } }],
         tools: TOOLS,
