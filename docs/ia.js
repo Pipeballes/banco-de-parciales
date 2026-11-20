@@ -75,7 +75,7 @@
   const ROMANOS = { "1": "i", "2": "ii", "3": "iii", "4": "iv", "5": "v" };
   const VACIAS = new Set("de la las los el y en a del para con por que un una al".split(" "));
   const tokens = (t) => norm(t).replace(/\b([1-5])\b/g, (m) => ROMANOS[m]).split(/[^a-z0-9]+/).filter(Boolean);
-  const ALIAS = { "bd": "Base de Datos y Administración de Datos I", "bases de datos": "Base de Datos y Administración de Datos I",
+  const ALIAS = { "bd": "Base de Datos y Administración de Datos I", "bases de datos": "Base de Datos y Administración de Datos I", "base de datos": "Base de Datos y Administración de Datos I",
     "so": "Sistemas Operativos", "eda": "Estructura de Datos y Algoritmos", "ia": "Inteligencia Artificial",
     "pln": "Procesamiento del Lenguaje Natural", "nlp": "Procesamiento del Lenguaje Natural", "qa": "Testing y QA",
     "probabilidad": "Probabilidad y Estadística I", "estadistica": "Probabilidad y Estadística I", "discreta": "Matemática Discreta",
@@ -92,6 +92,7 @@
       profes: [...new Set(docs.map((x) => x.profesor).filter((p) => p !== "Sin profesor"))] };
     return catalogo;
   }
+  const ROM = /^(i|ii|iii|iv|v|iiia|iib)$/;
   function detectarMateria(q, materias) {
     const nq = " " + tokens(q).join(" ") + " ";
     for (const [a, m] of Object.entries(ALIAS)) if (nq.includes(" " + tokens(a).join(" ") + " ") && materias.includes(m)) return m;
@@ -101,12 +102,16 @@
       const hits = tm.filter((w) => nq.includes(" " + w + " ")).length;
       if (!hits) continue;
       // Exige coincidir los números romanos (Física I ≠ Física IIB) y premia coincidencias completas
-      const rom = tm.filter((w) => /^(i|ii|iii|iv|v|iiia|iib)$/.test(w));
-      if (rom.length && !rom.some((w) => nq.includes(" " + w + " "))) continue;
+      // Números romanos: si la pregunta nombra uno, tiene que coincidir (Física I ≠ Física IIB)
+      const rom = tm.filter((w) => ROM.test(w)), romQ = nq.trim().split(" ").filter((w) => ROM.test(w));
+      if (romQ.length && rom.length && !rom.some((w) => romQ.includes(w) || romQ.includes(w.replace(/[ab]$/, "")))) continue;
+      const base = tm.filter((w) => !ROM.test(w));
+      const hb = base.filter((w) => nq.includes(" " + w + " ")).length;
+      if (base.length && hb / base.length < 0.5) continue;
       const p = hits / tm.length + hits * 0.01;
       if (p > puntaje) { puntaje = p; mejor = m; }
     }
-    return puntaje >= 0.5 ? mejor : null;
+    return puntaje >= 0.3 ? mejor : null;
   }
   function detectarProfe(q, profes) {
     const tq = new Set(tokens(q));
@@ -141,7 +146,7 @@
     }
     const filtrar = (lista, f) => lista
       .filter((d) => !f.tipo || d.tipo === f.tipo)
-      .filter((d) => !f.numero || d.numero === f.numero || d.tipo !== "Parcial")
+      .filter((d) => !f.numero || d.numero === f.numero || d.numero == null || d.tipo !== "Parcial")
       .filter((d) => !f.anio || String(d.anio) === f.anio)
       .filter((d) => !f.resuelto || /resuel|resolu|respuesta|soluci/.test(norm(d.titulo)));
     // Si no hay nada exacto, se aflojan los filtros de a uno: año, número, "resuelto" y por último el tipo
@@ -150,7 +155,8 @@
       if (lista.length || !r.length) break;
       if (f[k]) { f = { ...f, [k]: null }; lista = filtrar(r, f); relajado = true; }
     }
-    lista.sort((a, b) => (b.anio || 0) - (a.anio || 0) || a.titulo.localeCompare(b.titulo));
+    const exacto = (d) => (numero && d.numero === numero ? 1 : 0);
+    lista.sort((a, b) => exacto(b) - exacto(a) || (b.anio || 0) - (a.anio || 0) || a.titulo.localeCompare(b.titulo));
     return { materia, profe, tipo, lista, relajado, drive };
   }
 
