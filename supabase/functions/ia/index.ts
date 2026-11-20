@@ -1,5 +1,6 @@
 // Edge Function "ia": asistente del Banco de Parciales.
-// La clave de Claude vive SOLO como secreto de Supabase (ANTHROPIC_API_KEY), nunca en la página.
+// Usa Gemini (plan gratis de Google) si existe el secreto GEMINI_API_KEY; si no, Claude con ANTHROPIC_API_KEY.
+// Las claves viven SOLO como secretos de Supabase, nunca en la página.
 // Límite diario por persona y total (tabla ia_config) para controlar el gasto.
 import Anthropic from "npm:@anthropic-ai/sdk@1.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -11,9 +12,12 @@ const MODELO = "claude-haiku-5-5"; // el más barato
 const MAX_LECTURAS = 3; // PDFs que puede leer por consulta
 const MAX_PDF = 12 * 1024 * 1024;
 
-const anthropic = new Anthropic(); // lee ANTHROPIC_API_KEY del entorno
+const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") || "";
+const CLAUDE_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
+const anthropic = CLAUDE_KEY ? new Anthropic() : null; // lee ANTHROPIC_API_KEY del entorno
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+type Pdf = { pdf: string; titulo: string };
 type Doc = { id: string; titulo: string; materia: string; profesor: string; tipo: string; anio: number | null;
   fecha_examen: string | null; paginas: number | null; tamano: number; archivo: string };
 
@@ -28,7 +32,7 @@ async function catalogo() {
   return cache;
 }
 
-const norm = (s: string) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const norm = (s: string) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const nombreProfe = (p: string) => (p === "Sin profesor" ? "Otros" : p);
 const urlDoc = (d: Doc) => SITIO + d.archivo.split("/").map(encodeURIComponent).join("/");
 const urlCarpeta = (d: Doc) => SITIO + "#" + encodeURIComponent(d.materia) + "/" + encodeURIComponent(d.profesor);
@@ -100,6 +104,32 @@ async function quien(req: Request) {
   return encodeBase64(new Uint8Array(h)).slice(0, 22); // no se guarda la IP, solo un hash
 }
 
+// Modelo de Gemini: el del secreto GEMINI_MODEL, o el "flash" estable más nuevo que ofrezca la cuenta
+let modeloCache = "";
+async function modeloGemini(): Promise<string> {
+  const fijo = Deno.env.get("GEMINI_MODEL");
+  if (fijo) return fijo.replace(/^models\//, "");
+  if (modeloCache) return modeloCache;
+  try {
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", { headers: { "x-goog-api-key": GEMINI_KEY } });
+    const j = await r.json();
+    const nombres: string[] = (j.models || [])
+      .filter((m: any) => (m.supportedGenerationMethods || []).includes("generateContent"))
+      .map((m: any) => String(m.name).replace(/^models\//, ""));
+    if (nombres.includes("gemini-flash-latest")) modeloCache = "gemini-flash-latest";
+    else {
+      const flash = nombres.filter((n) => /^gemini-[\d.]+-flash$/.test(n))
+        .sort((a, b) => parseFloat(b.split("-")[1]) - parseFloat(a.split("-")[1]));
+      modeloCache = flash[0] || nombres.find((n) => n.includes("flash") && !/lite|image|tts|live|audio/.test(n)) || "gemini-flash-latest";
+    }
+  } catch (e) { console.error(e); modeloCache = "gemini-flash-latest"; }
+  return modeloCache;
+}
+function llamarGemini(modelo: string, body: unknown) {
+  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
+    method: "POST", headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   const H = { ...cors(origin), "Content-Type": "application/json" };
@@ -107,7 +137,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: H });
   if (req.method !== "POST") return resp({ error: "Método no permitido" }, 405);
   if (!origin || !ORIGENES.includes(origin)) return resp({ error: "Origen no permitido" }, 403);
-  if (!Deno.env.get("ANTHROPIC_API_KEY")) return resp({ error: "La IA todavía no está configurada." }, 503);
+  if (!GEMINI_KEY && !CLAUDE_KEY) return resp({ error: "La IA todavía no está configurada." }, 503);
 
   let body: { mensajes?: { role: string; content: string }[]; archivo?: string; modo?: string };
   try { body = await req.json(); } catch { return resp({ error: "Pedido inválido" }, 400); }
@@ -137,7 +167,13 @@ Deno.serve(async (req) => {
   }
 
   let lecturas = 0;
-  async function ejecutar(nombre: string, input: Record<string, string>): Promise<Anthropic.Beta.BetaToolResultBlockParam["content"]> {
+  async function bajarPdf(d: Doc): Promise<Pdf | null> {
+    const r = await fetch(urlDoc(d));
+    if (!r.ok) return null;
+    return { pdf: encodeBase64(new Uint8Array(await r.arrayBuffer())),
+      titulo: `${d.titulo} — ${d.materia} (${nombreProfe(d.profesor)}, ${d.anio ?? "sin fecha"})` };
+  }
+  async function ejecutar(nombre: string, input: Record<string, string>): Promise<string | Pdf> {
     if (nombre === "buscar_material") {
       const r = buscar(docs, input.consulta || "", input.materia, input.tipo);
       return JSON.stringify(r.length ? r : { resultado: "No hay archivos que coincidan." });
@@ -153,18 +189,15 @@ Deno.serve(async (req) => {
       if (lecturas >= MAX_LECTURAS) return `Ya leíste ${MAX_LECTURAS} archivos en esta consulta; respondé con lo que tenés.`;
       if (d.tamano > MAX_PDF) return "El archivo es demasiado grande para leerlo. Pasale el link al alumno.";
       lecturas++;
-      const r = await fetch(urlDoc(d));
-      if (!r.ok) return "No se pudo descargar el archivo.";
-      const data = encodeBase64(new Uint8Array(await r.arrayBuffer()));
-      return [{ type: "document", source: { type: "base64", media_type: "application/pdf", data },
-        title: `${d.titulo} — ${d.materia} (${nombreProfe(d.profesor)}, ${d.anio ?? "sin fecha"})` }] as never;
+      return await bajarPdf(d) ?? "No se pudo descargar el archivo.";
     }
     return "Herramienta desconocida.";
   }
 
+  async function conClaude(): Promise<Response> {
   try {
     for (let vuelta = 0; vuelta < 6; vuelta++) {
-      const r = await anthropic.beta.messages.create({
+      const r = await anthropic!.beta.messages.create({
         model: MODELO,
         max_tokens: 8000,
         output_config: { effort: "medium" },
@@ -184,7 +217,10 @@ Deno.serve(async (req) => {
         if (b.type !== "tool_use") continue;
         let content: Anthropic.Beta.BetaToolResultBlockParam["content"];
         let is_error = false;
-        try { content = await ejecutar(b.name, (b.input || {}) as Record<string, string>); }
+        try {
+          const out = await ejecutar(b.name, (b.input || {}) as Record<string, string>);
+          content = typeof out === "string" ? out : [{ type: "document", source: { type: "base64", media_type: "application/pdf", data: out.pdf }, title: out.titulo }] as never;
+        }
         catch (e) { console.error(e); content = "Error al ejecutar la herramienta."; is_error = true; }
         resultados.push({ type: "tool_result", tool_use_id: b.id, content, is_error });
       }
@@ -197,4 +233,64 @@ Deno.serve(async (req) => {
     if (e instanceof Anthropic.AuthenticationError) return resp({ error: "La IA no está bien configurada." }, 503);
     return resp({ error: "Hubo un error con la IA. Probá de nuevo." }, 502);
   }
+  }
+
+  // ---------- Gemini (gratis con la clave de Google AI Studio, sin facturación activada) ----------
+  async function conGemini(): Promise<Response> {
+    const modelo = await modeloGemini();
+    const contents: any[] = hist.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+    const ultimo = contents[contents.length - 1];
+    if (abierto) {
+      ultimo.parts.unshift({ text: `[El alumno está mirando "${abierto.titulo}" de ${abierto.materia} (profe: ${nombreProfe(abierto.profesor)}, ${abierto.anio ?? "sin fecha"}), id ${abierto.id}. Va adjunto.]` });
+      const pdf = abierto.tamano <= MAX_PDF ? await bajarPdf(abierto) : null;
+      if (pdf) { lecturas++; ultimo.parts.push({ inlineData: { mimeType: "application/pdf", data: pdf.pdf } }); }
+    }
+    const tools = [{ functionDeclarations: TOOLS.map((t) => ({ name: t.name, description: t.description, parameters: t.input_schema })) }];
+    for (let vuelta = 0; vuelta < 6; vuelta++) {
+      let r = await llamarGemini(modelo, { systemInstruction: { parts: [{ text: sistema(materias) }] }, contents, tools,
+        generationConfig: { maxOutputTokens: 8192 } });
+      if (r.status === 400 && contents.some((c) => c.parts.some((p: any) => p.functionResponse) && c.parts.some((p: any) => p.inlineData))) {
+        // Algunos modelos no aceptan el PDF junto a la respuesta de la herramienta: se manda en un mensaje aparte
+        for (let k = contents.length - 1; k >= 0; k--) {
+          const c = contents[k];
+          const inl = c.parts.filter((p: any) => p.inlineData);
+          if (inl.length && c.parts.some((p: any) => p.functionResponse)) {
+            c.parts = c.parts.filter((p: any) => !p.inlineData);
+            contents.splice(k + 1, 0, { role: "user", parts: [{ text: "PDF pedido:" }, ...inl] });
+          }
+        }
+        r = await llamarGemini(modelo, { systemInstruction: { parts: [{ text: sistema(materias) }] }, contents, tools,
+          generationConfig: { maxOutputTokens: 8192 } });
+      }
+      if (r.status === 429) return resp({ error: "La IA gratis llegó a su límite por ahora. Probá en un rato." }, 429);
+      if (!r.ok) { console.error("Gemini", r.status, await r.text()); return resp({ error: "Hubo un error con la IA. Probá de nuevo." }, 502); }
+      const j = await r.json();
+      const cand = j.candidates?.[0];
+      if (!cand?.content?.parts) {
+        const motivo = j.promptFeedback?.blockReason || cand?.finishReason;
+        return resp({ respuesta: motivo ? "No puedo ayudar con eso. Probá preguntando sobre alguna materia." : "No encontré una respuesta. Probá reformulando.", quedan });
+      }
+      const llamadas = cand.content.parts.filter((p: any) => p.functionCall);
+      if (!llamadas.length) {
+        const texto = cand.content.parts.filter((p: any) => p.text && !p.thought).map((p: any) => p.text).join("").trim();
+        return resp({ respuesta: texto || "No encontré una respuesta. Probá reformulando.", quedan });
+      }
+      contents.push(cand.content); // se devuelve tal cual (incluye las firmas de razonamiento)
+      const partes: any[] = [], adjuntos: any[] = [];
+      for (const p of llamadas) {
+        const { name, args, id } = p.functionCall;
+        let out: string | Pdf;
+        try { out = await ejecutar(name, args || {}); } catch (e) { console.error(e); out = "Error al ejecutar la herramienta."; }
+        const response = typeof out === "string" ? { resultado: out } : { resultado: `PDF "${out.titulo}" adjunto en este mensaje.` };
+        partes.push({ functionResponse: { ...(id ? { id } : {}), name, response } });
+        if (typeof out !== "string") adjuntos.push({ inlineData: { mimeType: "application/pdf", data: out.pdf } });
+      }
+      contents.push({ role: "user", parts: [...partes, ...adjuntos] });
+    }
+    return resp({ respuesta: "La consulta quedó muy larga. Probá con una pregunta más concreta.", quedan });
+  }
+
+  if (!GEMINI_KEY) return await conClaude();
+  try { return await conGemini(); }
+  catch (e) { console.error(e); return resp({ error: "Hubo un error con la IA. Probá de nuevo." }, 502); }
 });
