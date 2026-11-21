@@ -592,6 +592,10 @@
     }
   }
   $("#viewer-close").onclick = () => $("#viewer").close();
+  // Para el chat: abrir un PDF de la página en el visor
+  window.BancoApp = {
+    abrirArchivo(ruta) { const d = state.docs.find((x) => x.archivo === ruta); if (!d) return false; openViewer(d); return true; },
+  };
   $("#viewer").addEventListener("close", () => { viewToken++; $("#viewer-pages").innerHTML = ""; });
 
   $("#chips").addEventListener("click", (e) => {

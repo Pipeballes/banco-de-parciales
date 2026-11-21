@@ -52,7 +52,10 @@
     return s
       .replace(/`([^`]+)`/g, "<code>$1</code>")
       .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, t, u) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`);
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, t, u) => {
+        const interno = u.startsWith(location.origin + location.pathname.replace(/[^/]*$/, ""));
+        return interno ? `<a href="${u}" data-interno>${t}</a>` : `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
+      });
   }
   function md(texto) {
     const lineas = esc(texto).split("\n"); let html = "", lista = null, code = false;
@@ -163,13 +166,25 @@
     return { materia, profe, tipo, lista, relajado, drive };
   }
 
+  // Carpetas dentro de la página: primero la de la materia y después las de sus profes
+  function carpetasPagina(materia, soloProfes) {
+    const docs = (catalogo?.docs || []).filter((d) => d.materia === materia);
+    const profs = [...new Set(docs.map((d) => d.profesor))].filter((p) => !soloProfes || soloProfes.includes(p))
+      .sort((a, b) => (a === "Otros") - (b === "Otros") || a.localeCompare(b, "es"));
+    const links = profs.slice(0, 6).map((p) => `[${profeTxt(p)}](${urlCarpeta(materia, p)})`);
+    return `📂 **Carpetas en la página:** [${materia}](${urlCarpeta(materia)})${links.length ? " → " + links.join(" · ") : ""}`;
+  }
   function respuestaLocal(q, res) {
     const { materia, profe, lista, relajado, drive } = res;
     if (!lista.length) {
-      let t = materia ? `No encontré eso en **${materia}**.` : "No encontré material con eso. Probá nombrando la materia, por ejemplo: “pasame finales de Álgebra”.";
       const carp = materia && drive[materia];
-      if (carp && carp.length) t += `\n\nPodés mirar la carpeta original del Drive: ${carp.map((u, i) => `[Drive ${materia}${carp.length > 1 ? " " + (i + 1) : ""}](${u})`).join(" · ")}`;
-      else if (drive._raiz) t += `\n\nO buscá en el [Drive completo](${drive._raiz}).`;
+      if (materia) {
+        let t = `No encontré eso exacto en **${materia}**. Fijate en sus carpetas, acá en la página:\n\n${carpetasPagina(materia)}`;
+        if (carp && carp.length) t += `\n\nSi ahí tampoco está, buscalo en el Drive original: ${carp.map((u, i) => `[Drive de ${materia}${carp.length > 1 ? " " + (i + 1) : ""}](${u})`).join(" · ")}`;
+        return t;
+      }
+      let t = "No encontré material con eso. Probá nombrando la materia, por ejemplo: “pasame finales de Álgebra”, o elegila en la lista de **Todas las materias**.";
+      if (drive._raiz) t += `\n\nSi la materia no está en la página, buscala en el [Drive original](${drive._raiz}).`;
       return t;
     }
     const MAX = 15;
@@ -185,11 +200,14 @@
       for (const d of ds) t += `- [${d.titulo} (${d.anio || "sin fecha"})${materia ? "" : " — " + d.materia}](${urlAbs(d.archivo)}) · ${profeTxt(d.profesor)}\n`;
     }
     if (lista.length > MAX) t += `\n…y ${lista.length - MAX} más.`;
-    if (materia) t += `\n\n📂 [Ver todo en la página](${urlCarpeta(materia, profe)})`;
-    const carp = materia && drive[materia];
-    if (carp && carp.length) t += ` · [Carpeta del Drive](${carp[0]})`;
+    if (materia) t += `\n\n${carpetasPagina(materia, profe ? [profe] : null)}`;
+    else {
+      const mats = [...new Set(lista.map((d) => d.materia))].slice(0, 4);
+      t += `\n\n📂 **Carpetas en la página:** ${mats.map((m) => `[${m}${profe ? " — " + profeTxt(profe) : ""}](${urlCarpeta(m, profe)})`).join(" · ")}`;
+    }
     return t;
   }
+
 
   // ¿La pregunta necesita IA (explicar, practicar, resumir) o alcanza con buscar archivos?
   const PIDE_ARCHIVOS = /(pasame|pasa |tenes|tenés|hay |busc|dame|mandame|quiero|necesito|donde)/;
@@ -219,7 +237,10 @@
     }
     msgs.innerHTML = estado.mensajes.map((m) =>
       `<div class="ia-msg ${m.role === "user" ? "yo" : "bot"}${m.error ? " err" : ""}">${m.role === "user" ? `<p>${esc(m.content)}</p>` : md(m.content)}</div>`).join("");
-    msgs.scrollTop = msgs.scrollHeight;
+    // Se muestra desde la última pregunta, así la respuesta se lee de arriba hacia abajo
+    const preguntas = msgs.querySelectorAll(".ia-msg.yo");
+    const ult = preguntas[preguntas.length - 1];
+    msgs.scrollTop = ult ? ult.offsetTop - msgs.offsetTop - 8 : msgs.scrollHeight;
   }
 
   const autoalto = () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 140) + "px"; };
@@ -274,6 +295,16 @@
     }
   };
 
+  msgs.addEventListener("click", (e) => {
+    const a = e.target.closest("a[data-interno]"); if (!a) return;
+    const u = new URL(a.href);
+    const flotante = matchMedia("(max-width: 1280px)").matches;
+    if (/\.pdf$/i.test(u.pathname) && window.BancoApp) {
+      const ruta = decodeURIComponent(u.pathname).replace(/^.*?\/(archivos\/)/, "$1");
+      if (window.BancoApp.abrirArchivo(ruta)) { e.preventDefault(); return; }
+    }
+    if (u.hash) { e.preventDefault(); location.hash = u.hash; if (flotante) cerrar(); }
+  });
   $("ia-nuevo").onclick = () => { estado = { mensajes: [], archivo: null, archivoTitulo: "" }; guardar(); pintar(); input.focus(); };
   const abrir = () => { slot.classList.add("open"); document.body.classList.add("ia-abierta"); setTimeout(() => input.focus(), 50); };
   const cerrar = () => { slot.classList.remove("open"); document.body.classList.remove("ia-abierta"); };

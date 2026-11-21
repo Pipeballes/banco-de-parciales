@@ -35,7 +35,7 @@ async function catalogo() {
 const norm = (s: string) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const nombreProfe = (p: string) => (p === "Sin profesor" ? "Otros" : p);
 const urlDoc = (d: Doc) => SITIO + d.archivo.split("/").map(encodeURIComponent).join("/");
-const urlCarpeta = (d: Doc) => SITIO + "#" + encodeURIComponent(d.materia) + "/" + encodeURIComponent(d.profesor);
+const urlCarpeta = (d: Doc) => SITIO + "#" + encodeURIComponent(d.materia) + "/" + encodeURIComponent(d.profesor); // carpeta dentro de la página
 
 function buscar(docs: Doc[], consulta: string, materia?: string, tipo?: string) {
   const palabras = norm(consulta).split(/[^a-z0-9]+/).filter((w) => w.length > 1);
@@ -56,7 +56,7 @@ function buscar(docs: Doc[], consulta: string, materia?: string, tipo?: string) 
 
 const TOOLS: Anthropic.Beta.BetaTool[] = [
   { name: "buscar_material",
-    description: "Busca en el catálogo del Banco de Parciales (espejo revisado del Drive de la comunidad: parciales, finales, resúmenes y apuntes de alumnos, con datos personales tapados). Devuelve hasta 25 archivos con su id, links al PDF y a la carpeta del profe.",
+    description: "Busca en el catálogo del Banco de Parciales (espejo revisado del Drive de la comunidad: parciales, finales, resúmenes y apuntes de alumnos, con datos personales tapados). Devuelve hasta 25 archivos con su id, link al PDF (url_pdf) y a la carpeta del profe dentro de la página (url_carpeta).",
     input_schema: { type: "object", properties: {
       consulta: { type: "string", description: "Palabras clave: tema, tipo de examen, año, profesor. Puede ir vacía para listar la materia." },
       materia: { type: "string", description: "Nombre de la materia, si se sabe." },
@@ -66,7 +66,7 @@ const TOOLS: Anthropic.Beta.BetaTool[] = [
     description: `Lee el contenido de un PDF del catálogo (por su id) para explicarlo, resolverlo, resumirlo o hacer ejercicios parecidos. Máximo ${MAX_LECTURAS} por consulta: elegí los más relevantes.`,
     input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
   { name: "carpetas_drive",
-    description: "Devuelve los links a las carpetas originales del Drive de una materia, por si el alumno quiere ver todo lo que hay ahí.",
+    description: "Devuelve los links a las carpetas originales del Drive de una materia. Usalo SOLO si en la página (buscar_material) no hay lo que el alumno pide.",
     input_schema: { type: "object", properties: { materia: { type: "string" } }, required: ["materia"] } },
 ];
 
@@ -74,7 +74,8 @@ function sistema(materias: string[]) {
   return `Sos el asistente del "Banco de Parciales", una página hecha por alumnos de Ingeniería de la Universidad de Palermo (UP) para compartir parciales, finales, resúmenes y apuntes.
 
 Qué hacés:
-- Buscar material: cuando te piden material de una materia, usá buscar_material y devolvé los archivos con links en Markdown, [Título (año) — Profe](url_pdf). Agrupá por tipo si son muchos. Si no hay nada, decilo y pasá la carpeta del Drive con carpetas_drive.
+- Buscar material: cuando te piden material de una materia, usá buscar_material y devolvé los archivos con links en Markdown, [Título (año) — Profe](url_pdf). Agrupá por tipo si son muchos. Al final pasá la carpeta de la materia o del profe DENTRO de la página, [Materia — Profe](url_carpeta), para que vea todo ahí.
+- Drive original: solo si en el catálogo de la página no hay nada de lo que pide, decilo y recién ahí pasá la carpeta del Drive con carpetas_drive. Nunca mandes al Drive si el material está en la página.
 - Tutor: explicar y resolver ejercicios de un parcial paso a paso (usá leer_archivo para ver el PDF).
 - Práctica: generar ejercicios nuevos al estilo de los parciales reales de esa materia/profe (leé 1 o 2 parciales primero), con la solución al final separada, para que el alumno intente antes.
 - Resumen: resumir los temas que se toman en la materia, en base a los parciales y resúmenes del catálogo.

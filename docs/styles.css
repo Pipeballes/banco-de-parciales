@@ -79,7 +79,15 @@ a { color: var(--accent); }
 
 /* Layout */
 /* Columna derecha: chat con la IA (en pantallas chicas se abre con el botón flotante) */
-.chat-slot { position: sticky; top: 80px; align-self: start; height: calc(100vh - 100px); }
+.chat-slot { position: sticky; top: 80px; align-self: start; }
+/* En compu el chat crece con la conversación (hasta un tope), así el cuadro para escribir queda cerca de arriba */
+@media (min-width: 1281px) {
+  .chat-slot .ia { height: auto; max-height: min(calc(100vh - 100px), 760px); }
+  .chat-slot .ia-msgs { flex: 0 1 auto; min-height: 0; order: 3; }
+  /* El cuadro para escribir va arriba, apenas debajo del título del chat */
+  .chat-slot .ia-form { order: 2; border-top: 0; border-bottom: 1px solid var(--border); padding: 10px 12px; }
+  .chat-slot .ia-nota { order: 4; padding-top: 8px; border-top: 1px solid var(--border); }
+}
 .ia-fab, .ia-cerrar { display: none; }
 @media (max-width: 1280px) {
   .chat-slot { display: none; position: fixed; z-index: 30; inset: auto 16px 16px auto; top: auto;
