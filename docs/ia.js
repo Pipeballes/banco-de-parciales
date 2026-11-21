@@ -48,8 +48,18 @@
 
   // Markdown mínimo y seguro: primero se escapa todo, después se dan formato a negritas, títulos, listas y links http(s)
   const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // Fórmulas en estilo LaTeX ($...$): se muestran en cursiva con símbolos comunes
+  const LATEX = { "\\cdot": "·", "\\times": "×", "\\neq": "≠", "\\leq": "≤", "\\geq": "≥", "\\infty": "∞", "\\pm": "±",
+    "\\to": "→", "\\in": "∈", "\\sum": "Σ", "\\int": "∫", "\\sqrt": "√", "\\alpha": "α", "\\beta": "β", "\\lambda": "λ", "\\pi": "π", "\\Delta": "Δ" };
+  function formula(f) {
+    let t = f;
+    for (const [k, v] of Object.entries(LATEX)) t = t.split(k).join(v);
+    return t.replace(/\^\{([^}]*)\}/g, "<sup>$1</sup>").replace(/_\{([^}]*)\}/g, "<sub>$1</sub>")
+      .replace(/\^(\w)/g, "<sup>$1</sup>").replace(/_(\w)/g, "<sub>$1</sub>").replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "($1)/($2)").replace(/[{}]/g, "");
+  }
   function inline(s) {
     return s
+      .replace(/\$\$([^$]+)\$\$|\$([^$\n]+)\$/g, (_, a, b) => `<i class="ia-f">${formula(a || b)}</i>`)
       .replace(/`([^`]+)`/g, "<code>$1</code>")
       .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
       .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, t, u) => {

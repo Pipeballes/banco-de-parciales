@@ -18,11 +18,11 @@ awk -F'\t' 'NR==FNR{v[$1]=1;next} !($1 in v)' drive_vistos.txt /tmp/rev/todos.ts
 Bajar un archivo: `https://drive.usercontent.google.com/download?id=ID&export=download&confirm=t`.
 Para ver varios juntos: `TREE=/tmp/rev/tree.tsv python3 getset.py "<ruta de la carpeta>" /tmp/rev/x` (arma `sheet*.png`).
 
-**Envíos de la página**: `GET https://aytjufgmgxjlnoagfpbc.supabase.co/functions/v1/revision` con el header
-`x-clave: <clave>`. La clave se lee con la herramienta de SQL de Supabase:
-`select clave from privado.revision limit 1;` (nunca la escribas en un archivo, commit ni mensaje).
-Devuelve los envíos sin revisar con links firmados a sus archivos. Al terminar cada uno:
-`POST .../functions/v1/revision` con `{"id": <id>, "revisado": true}` y el mismo header.
+**Envíos de la página**: `curl -s https://aytjufgmgxjlnoagfpbc.supabase.co/functions/v1/revision`.
+La clave (header `x-revision-key`) la agrega sola la red de la sesión: no la pidas ni la escribas.
+Si responde "Clave incorrecta", saltá los envíos y avisalo en el resumen.
+Devuelve los envíos sin revisar con links firmados a sus archivos (válidos 1 hora). Al terminar cada uno:
+`curl -s -X POST -H 'content-type: application/json' -d '{"id": <id>, "revisado": true}' .../functions/v1/revision`.
 
 ## 2. Qué NO se agrega
 

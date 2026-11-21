@@ -1,7 +1,7 @@
 // Edge Function "revision": la usa la sesión automática de revisión (scripts/revision/REVISION.md).
 // GET  -> envíos de "Subir parcial" sin revisar, con links firmados (1 hora) a sus archivos.
 // POST {"id": n, "revisado": true} -> marca un envío como revisado.
-// Requiere el header x-clave (guardada en privado.revision, solo legible con acceso a la base).
+// Requiere el header x-revision-key igual al secreto REVISION_KEY de Supabase (o x-clave igual a privado.revision).
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -9,9 +9,14 @@ const json = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o, null, 1), { status, headers: { "Content-Type": "application/json" } });
 
 Deno.serve(async (req) => {
-  const clave = req.headers.get("x-clave") || "";
-  const { data: ok, error } = await db.rpc("revision_ok", { p_clave: clave });
-  if (error) { console.error(error); return json({ error: "No se pudo verificar la clave" }, 500); }
+  const secreto = Deno.env.get("REVISION_KEY") || "";
+  const dada = req.headers.get("x-revision-key") || "";
+  let ok = secreto.length >= 12 && dada === secreto;
+  if (!ok && req.headers.get("x-clave")) {
+    const { data, error } = await db.rpc("revision_ok", { p_clave: req.headers.get("x-clave") });
+    if (error) { console.error(error); return json({ error: "No se pudo verificar la clave" }, 500); }
+    ok = !!data;
+  }
   if (!ok) return json({ error: "Clave incorrecta" }, 401);
 
   if (req.method === "GET") {

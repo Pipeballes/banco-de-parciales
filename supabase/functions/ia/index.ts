@@ -9,8 +9,9 @@ import { encodeBase64 } from "jsr:@std/encoding@1.0.5/base64";
 const SITIO = "https://pipeballes.github.io/banco-de-parciales/";
 const ORIGENES = ["https://pipeballes.github.io"];
 const MODELO = "claude-haiku-5-5"; // el más barato
-const MAX_LECTURAS = 3; // PDFs que puede leer por consulta
-const MAX_PDF = 12 * 1024 * 1024;
+const MAX_LECTURAS = 2; // PDFs que puede leer por consulta
+const MAX_PDF = 5 * 1024 * 1024; // los más pesados no se leen (el plan gratis de Supabase tiene poco tiempo y memoria)
+const TOPE_MS = 105_000; // tiempo máximo de trabajo por pregunta (Supabase corta a los 150 s)
 
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") || "";
 const CLAUDE_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -122,25 +123,42 @@ async function modelosGemini(): Promise<string[]> {
   const flash = nombres.filter((n) => /^gemini-[\d.]+-flash$/.test(n)).sort((a, b) => ver(b) - ver(a));
   const lite = nombres.filter((n) => /^gemini-[\d.]+-flash-lite$/.test(n)).sort((a, b) => ver(b) - ver(a));
   const alias = ["gemini-flash-latest", "gemini-flash-lite-latest"].filter((n) => nombres.includes(n));
-  modelosCache = [...new Set([fijo, alias[0], ...flash.slice(0, 2), alias[1], ...lite.slice(0, 1)].filter(Boolean) as string[])];
+  // Se alternan "flash" y "lite" (más liviano): si Google está saturado, el lite suele responder
+  modelosCache = [...new Set([fijo, alias[0] || flash[0], alias[1] || lite[0], flash[0], lite[0], flash[1]].filter(Boolean) as string[])];
   if (!modelosCache.length) modelosCache = ["gemini-flash-latest"];
   console.log("Modelos Gemini:", modelosCache.join(", "));
   return modelosCache;
 }
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
-// Llama a Gemini; si un modelo está saturado (429/500/503), reintenta y después prueba el siguiente
-async function llamarGemini(body: unknown): Promise<Response> {
-  const modelos = await modelosGemini();
+// Llama a Gemini; si un modelo está saturado o tarda demasiado (25 s, o 45 s si lleva PDFs), prueba el siguiente
+const saturados = new Map<string, number>(); // modelo -> hasta cuándo evitarlo
+let pensarPoco = true;
+async function llamarGemini(body: unknown, hasta: number): Promise<Response> {
+  const ahora = Date.now();
+  const modelos = (await modelosGemini()).slice().sort((a, b) => ((saturados.get(a) || 0) > ahora ? 1 : 0) - ((saturados.get(b) || 0) > ahora ? 1 : 0));
+  // Modo rápido: que piense poco (si el modelo no lo acepta, se manda sin esa opción)
+  const b: any = body;
+  const conRapido = pensarPoco ? { ...b, generationConfig: { ...(b.generationConfig || {}), thinkingConfig: { thinkingLevel: "low" } } } : b;
+  let texto = JSON.stringify(conRapido); // una sola vez: con PDFs es pesado
   let ultima: Response | null = null;
   for (const modelo of modelos) {
     for (let intento = 0; intento < 2; intento++) {
+      if (Date.now() > hasta) return ultima ?? new Response("tiempo", { status: 504 });
+      const t0 = Date.now();
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
-        method: "POST", headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (![429, 500, 503].includes(r.status)) return r;
+        method: "POST", headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" }, body: texto,
+        signal: AbortSignal.timeout(Math.max(5_000, Math.min(texto.length > 300_000 ? 45_000 : 25_000, hasta - Date.now()))) }).catch(() => new Response("tiempo", { status: 504 }));
+      console.log("Gemini", modelo, r.status, `${((Date.now() - t0) / 1000).toFixed(1)}s`, `${Math.round(texto.length / 1024)}KB`);
+      if (r.status === 400 && pensarPoco) {
+        const err = await r.clone().text();
+        if (/thinking/i.test(err)) { pensarPoco = false; texto = JSON.stringify(body); intento--; continue; }
+      }
+      if (![429, 500, 503, 504].includes(r.status)) return r;
       console.warn("Gemini", modelo, r.status, (await r.text()).slice(0, 200));
+      saturados.set(modelo, Date.now() + 5 * 60_000);
       ultima = r;
-      if (r.status === 429) break; // límite de ese modelo: probar el siguiente
-      await esperar(1200 * (intento + 1));
+      if (r.status === 429 || r.status === 504) break; // límite o colgado: probar el siguiente modelo
+      await esperar(1000);
     }
   }
   return ultima ?? new Response("sin modelos", { status: 503 });
@@ -183,6 +201,7 @@ Deno.serve(async (req) => {
   }
 
   let lecturas = 0;
+  const hasta = Date.now() + TOPE_MS;
   async function bajarPdf(d: Doc): Promise<Pdf | null> {
     const r = await fetch(urlDoc(d));
     if (!r.ok) return null;
@@ -203,7 +222,8 @@ Deno.serve(async (req) => {
       const d = porId.get(input.id);
       if (!d) return "No existe un archivo con ese id. Buscalo primero con buscar_material.";
       if (lecturas >= MAX_LECTURAS) return `Ya leíste ${MAX_LECTURAS} archivos en esta consulta; respondé con lo que tenés.`;
-      if (d.tamano > MAX_PDF) return "El archivo es demasiado grande para leerlo. Pasale el link al alumno.";
+      if (Date.now() > hasta - 45_000) return "No queda tiempo para leer más archivos; respondé con lo que tenés y pasale los links al alumno.";
+      if (d.tamano > MAX_PDF) return "Ese archivo es muy pesado para leerlo acá; elegí otro más liviano o pasale el link al alumno.";
       lecturas++;
       return await bajarPdf(d) ?? "No se pudo descargar el archivo.";
     }
@@ -256,14 +276,17 @@ Deno.serve(async (req) => {
     const contents: any[] = hist.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
     const ultimo = contents[contents.length - 1];
     if (abierto) {
-      ultimo.parts.unshift({ text: `[El alumno está mirando "${abierto.titulo}" de ${abierto.materia} (profe: ${nombreProfe(abierto.profesor)}, ${abierto.anio ?? "sin fecha"}), id ${abierto.id}. Va adjunto.]` });
       const pdf = abierto.tamano <= MAX_PDF ? await bajarPdf(abierto) : null;
+      ultimo.parts.unshift({ text: `[El alumno está mirando "${abierto.titulo}" de ${abierto.materia} (profe: ${nombreProfe(abierto.profesor)}, ${abierto.anio ?? "sin fecha"}), id ${abierto.id}. ${pdf ? "Va adjunto." : "Es muy pesado para leerlo acá: respondé en general y decile que lo mire en el visor."}]` });
       if (pdf) { lecturas++; ultimo.parts.push({ inlineData: { mimeType: "application/pdf", data: pdf.pdf } }); }
     }
     const tools = [{ functionDeclarations: TOOLS.map((t) => ({ name: t.name, description: t.description, parameters: t.input_schema })) }];
     for (let vuelta = 0; vuelta < 6; vuelta++) {
-      let r = await llamarGemini({ systemInstruction: { parts: [{ text: sistema(materias) }] }, contents, tools,
-        generationConfig: { maxOutputTokens: 8192 } });
+      // Si queda poco tiempo, se le pide que responda ya, sin usar más herramientas
+      const apurado = Date.now() > hasta - 40_000 || vuelta === 5;
+      const extra = apurado ? { toolConfig: { functionCallingConfig: { mode: "NONE" } } } : {};
+      let r = await llamarGemini({ systemInstruction: { parts: [{ text: sistema(materias) }] }, contents, tools, ...extra,
+        generationConfig: { maxOutputTokens: 6144 } }, hasta);
       if (r.status === 400 && contents.some((c) => c.parts.some((p: any) => p.functionResponse) && c.parts.some((p: any) => p.inlineData))) {
         // Algunos modelos no aceptan el PDF junto a la respuesta de la herramienta: se manda en un mensaje aparte
         for (let k = contents.length - 1; k >= 0; k--) {
@@ -274,9 +297,10 @@ Deno.serve(async (req) => {
             contents.splice(k + 1, 0, { role: "user", parts: [{ text: "PDF pedido:" }, ...inl] });
           }
         }
-        r = await llamarGemini({ systemInstruction: { parts: [{ text: sistema(materias) }] }, contents, tools,
-          generationConfig: { maxOutputTokens: 8192 } });
+        r = await llamarGemini({ systemInstruction: { parts: [{ text: sistema(materias) }] }, contents, tools, ...extra,
+          generationConfig: { maxOutputTokens: 6144 } }, hasta);
       }
+      if (r.status === 504) return resp({ error: "La IA tardó demasiado (la gratis a veces está lenta). Probá con una pregunta más concreta o de nuevo en un rato." }, 429);
       if (r.status === 429) return resp({ error: "La IA gratis llegó a su límite por ahora. Probá en un rato." }, 429);
       if (r.status === 503 || r.status === 500) return resp({ error: "La IA gratis de Google está saturada en este momento. Probá de nuevo en un minuto." }, 429);
       if (!r.ok) { console.error("Gemini", r.status, await r.text()); return resp({ error: "Hubo un error con la IA. Probá de nuevo." }, 502); }
