@@ -50,7 +50,7 @@
   const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   // Fórmulas en estilo LaTeX ($...$): se muestran en cursiva con símbolos comunes
   const LATEX = { "\\cdot": "·", "\\times": "×", "\\neq": "≠", "\\leq": "≤", "\\geq": "≥", "\\infty": "∞", "\\pm": "±",
-    "\\to": "→", "\\in": "∈", "\\sum": "Σ", "\\int": "∫", "\\sqrt": "√", "\\alpha": "α", "\\beta": "β", "\\lambda": "λ", "\\pi": "π", "\\Delta": "Δ" };
+    "\\to": "→", "\\int": "∫", "\\in": "∈", "\\sum": "Σ", "\\sqrt": "√", "\\alpha": "α", "\\beta": "β", "\\lambda": "λ", "\\pi": "π", "\\Delta": "Δ" };
   function formula(f) {
     let t = f;
     for (const [k, v] of Object.entries(LATEX)) t = t.split(k).join(v);
