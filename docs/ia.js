@@ -13,11 +13,14 @@
   const guardar = () => { try { sessionStorage.setItem(KEY, JSON.stringify(estado)); } catch {} };
 
   slot.innerHTML = `
+    <div class="resizer resizer-chat" role="separator" aria-orientation="vertical" aria-label="Cambiar el ancho del chat" tabindex="0" title="Arrastrá para cambiar el ancho (doble clic: tamaño original)"></div>
+    <div class="ia-corner" title="Arrastrá para cambiar el tamaño (doble clic: tamaño original)" aria-hidden="true"></div>
     <div class="ia" role="region" aria-label="Asistente con IA">
       <div class="ia-head">
         <strong>✨ Preguntale a la IA</strong>
         <div class="ia-head-act">
           <button class="ia-icon" id="ia-nuevo" title="Nueva conversación" aria-label="Nueva conversación">↺</button>
+          <button class="ia-icon" id="ia-grande" title="Agrandar" aria-label="Agrandar el chat" aria-pressed="false">⤢</button>
           <button class="ia-icon ia-cerrar" id="ia-cerrar" title="Cerrar" aria-label="Cerrar">✕</button>
         </div>
       </div>

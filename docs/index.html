@@ -31,7 +31,10 @@
   </section>
 
   <main class="wrap layout">
-    <aside class="sidebar" id="sidebar" aria-label="Materias"></aside>
+    <div class="side-wrap">
+      <aside class="sidebar" id="sidebar" aria-label="Materias"></aside>
+      <div class="resizer resizer-side" role="separator" aria-orientation="vertical" aria-label="Cambiar el ancho de la lista de materias" tabindex="0" title="Arrastrá para cambiar el ancho (doble clic: tamaño original)"></div>
+    </div>
 
     <section class="content">
       <nav class="crumbs" id="crumbs"></nav>
@@ -84,5 +87,6 @@
   <script src="config.js"></script>
   <script src="app.js"></script>
   <script src="ia.js"></script>
+  <script src="redimensionar.js"></script>
 </body>
 </html>
