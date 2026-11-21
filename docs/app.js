@@ -144,7 +144,7 @@
         <strong>${esc(p.nombre)}</strong>
         <div class="mat-chips">${p.dicta.map((m) => {
           const o = p.materias[m] || p.general;
-          return `<a class="mat-chip" href="#${encodeURIComponent(m)}/${encodeURIComponent(p.nombre)}" title="Ver sus parciales de ${esc(m)}">${o ? OP[o].icon + " " : ""}${esc(m)}</a>`;
+          return `<a class="mat-chip" href="#${encodeURIComponent(m)}/${encodeURIComponent((p.carpetas && p.carpetas[m]) || p.nombre)}" title="Ver sus parciales de ${esc(m)}">${o ? OP[o].icon + " " : ""}${esc(m)}</a>`;
         }).join("")}</div>
         ${(() => { const r = resultado(p, mat); return r ? `<div class="op-label">${iconoDe(r)} ${esc(etiqueta(r))}</div>` : ""; })()}
         ${p.comentario && !LEAN_RE.test(p.comentario) ? `<p>“${esc(p.comentario)}”</p>` : ""}
@@ -400,7 +400,8 @@
 
   function renderStats() {
     const materias = new Set(state.docs.map((d) => d.materia)).size;
-    const profes = new Set(state.docs.map((d) => d.materia + "|" + d.profesor)).size;
+    // "A + B" (materia que dan juntos) cuenta como dos profes
+    const profes = new Set(state.docs.flatMap((d) => d.profesor.split("+").map((p) => d.materia + "|" + p.trim()))).size;
     const parciales = state.docs.filter((d) => d.tipo === "Parcial").length;
     $("#stats").innerHTML = [
       [state.docs.length, "documento", "documentos"], [parciales, "parcial", "parciales"],

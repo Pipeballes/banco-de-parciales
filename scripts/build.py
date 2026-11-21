@@ -254,6 +254,11 @@ def opinion(value, where: str) -> str | None:
     return None
 
 
+def separar_profes(carpeta: str) -> list[str]:
+    """ "Delfina Mía Luna + Jorge Pereyra" -> ["Delfina Mía Luna", "Jorge Pereyra"] """
+    return [p.strip() for p in carpeta.split("+") if p.strip()]
+
+
 def load_profes(docs: list[dict]) -> list[dict]:
     """Junta las opiniones de profesores.yml con los profes que aparecen en los parciales."""
     raw = {}
@@ -271,12 +276,16 @@ def load_profes(docs: list[dict]) -> list[dict]:
     dicta: dict[str, set[str]] = {}
     nombres: dict[str, str] = {}
     materias_slug = {}
+    carpetas: dict[str, dict[str, str]] = {}
     for d in docs:
         if d["profesor"] == SIN_PROFE:
             continue
-        nombres.setdefault(slug(d["profesor"]), d["profesor"])
-        dicta.setdefault(slug(d["profesor"]), set()).add(d["materia"])
         materias_slug[slug(d["materia"])] = d["materia"]
+        # Una carpeta "Profe A + Profe B" es una materia que dan juntos: cada uno sigue siendo un profe aparte
+        for nombre in separar_profes(d["profesor"]):
+            nombres.setdefault(slug(nombre), nombre)
+            dicta.setdefault(slug(nombre), set()).add(d["materia"])
+            carpetas.setdefault(slug(nombre), {})[d["materia"]] = d["profesor"]
 
     profes: dict[str, dict] = {}
     for nombre, info in raw.items():
@@ -299,6 +308,8 @@ def load_profes(docs: list[dict]) -> list[dict]:
         profes.setdefault(k, {"nombre": nombre, "general": None, "materias": {}, "comentario": ""})
     for k, p in profes.items():
         p["dicta"] = sorted(dicta.get(k, set()) | set(p["materias"]), key=str.lower)
+        # Carpeta donde están sus parciales de cada materia, cuando no se llama igual que el profe (p. ej. "A + B")
+        p["carpetas"] = {m: c for m, c in carpetas.get(k, {}).items() if c != p["nombre"]}
     return sorted(profes.values(), key=lambda p: p["nombre"].lower())
 
 
