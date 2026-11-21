@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
   if (!dada && /^basic /i.test(auth)) {
     try { const t = atob(auth.slice(6).trim()); dada = t.slice(t.indexOf(":") + 1); } catch { /* formato inválido */ }
   }
-  let ok = secreto.length >= 12 && dada === secreto;
+  let ok = secreto.length >= 8 && dada === secreto;
   if (!ok && req.headers.get("x-clave")) {
     const { data, error } = await db.rpc("revision_ok", { p_clave: req.headers.get("x-clave") });
     if (error) { console.error(error); return json({ error: "No se pudo verificar la clave" }, 500); }
