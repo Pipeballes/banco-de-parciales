@@ -513,7 +513,7 @@
           body: JSON.stringify({ materia: v("materia"), profesor: v("profesor"), anio: v("anio"), tipo: v("tipo"), comentario: v("comentario"), archivos: rutas }) });
         if (!r.ok) throw new Error("No se pudo guardar el envío.");
         f.reset();
-        msg.innerHTML = `<p class="form-msg ok">¡Gracias! 🙌 Recibimos ${rutas.length} archivo(s). Los vamos a revisar y subir a la página.</p>`;
+        msg.innerHTML = `<p class="form-msg ok">¡Gracias! 🙌 Recibimos ${rutas.length} archivo(s). En menos de un día los revisamos, tapamos nombres y legajos, y los subimos a la página en su carpeta.</p>`;
       } catch (err) {
         msg.innerHTML = `<p class="form-msg err">${esc(err.message)} Probá de nuevo en un rato.</p>`;
       } finally { btn.disabled = false; }
