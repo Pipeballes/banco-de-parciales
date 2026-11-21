@@ -256,7 +256,8 @@
       body: JSON.stringify({ mensajes: estado.mensajes.filter((m) => !m.error).slice(-10).map(({ role, content }) => ({ role, content })), archivo: estado.archivo }),
     });
     const j = await r.json().catch(() => ({}));
-    if (r.status === 503) { iaApagada = true; try { sessionStorage.setItem("ia-off", "1"); } catch {} }
+    // Solo se deja de intentar si la IA no está configurada (no por una saturación momentánea)
+    if (r.status === 503 && /configurada/.test(j.error || "")) { iaApagada = true; try { sessionStorage.setItem("ia-off", "1"); } catch {} }
     if (!r.ok || j.error) { const e = new Error(j.error || "No se pudo responder."); e.status = r.status; throw e; }
     if (typeof j.quedan === "number") $("ia-nota").textContent = `Buscar material es ilimitado. Te quedan ${j.quedan} preguntas a la IA hoy.`;
     return j.respuesta;

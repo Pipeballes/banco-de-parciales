@@ -105,30 +105,45 @@ async function quien(req: Request) {
   return encodeBase64(new Uint8Array(h)).slice(0, 22); // no se guarda la IP, solo un hash
 }
 
-// Modelo de Gemini: el del secreto GEMINI_MODEL, o el "flash" estable más nuevo que ofrezca la cuenta
-let modeloCache = "";
-async function modeloGemini(): Promise<string> {
-  const fijo = Deno.env.get("GEMINI_MODEL");
-  if (fijo) return fijo.replace(/^models\//, "");
-  if (modeloCache) return modeloCache;
+// Modelos de Gemini a probar, en orden: el del secreto GEMINI_MODEL y los "flash" que ofrezca la cuenta
+let modelosCache: string[] = [];
+async function modelosGemini(): Promise<string[]> {
+  if (modelosCache.length) return modelosCache;
+  const fijo = (Deno.env.get("GEMINI_MODEL") || "").replace(/^models\//, "");
+  let nombres: string[] = [];
   try {
     const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", { headers: { "x-goog-api-key": GEMINI_KEY } });
     const j = await r.json();
-    const nombres: string[] = (j.models || [])
+    nombres = (j.models || [])
       .filter((m: any) => (m.supportedGenerationMethods || []).includes("generateContent"))
       .map((m: any) => String(m.name).replace(/^models\//, ""));
-    if (nombres.includes("gemini-flash-latest")) modeloCache = "gemini-flash-latest";
-    else {
-      const flash = nombres.filter((n) => /^gemini-[\d.]+-flash$/.test(n))
-        .sort((a, b) => parseFloat(b.split("-")[1]) - parseFloat(a.split("-")[1]));
-      modeloCache = flash[0] || nombres.find((n) => n.includes("flash") && !/lite|image|tts|live|audio/.test(n)) || "gemini-flash-latest";
-    }
-  } catch (e) { console.error(e); modeloCache = "gemini-flash-latest"; }
-  return modeloCache;
+  } catch (e) { console.error(e); }
+  const ver = (n: string) => parseFloat((n.match(/gemini-([\d.]+)/) || [])[1] || "0");
+  const flash = nombres.filter((n) => /^gemini-[\d.]+-flash$/.test(n)).sort((a, b) => ver(b) - ver(a));
+  const lite = nombres.filter((n) => /^gemini-[\d.]+-flash-lite$/.test(n)).sort((a, b) => ver(b) - ver(a));
+  const alias = ["gemini-flash-latest", "gemini-flash-lite-latest"].filter((n) => nombres.includes(n));
+  modelosCache = [...new Set([fijo, alias[0], ...flash.slice(0, 2), alias[1], ...lite.slice(0, 1)].filter(Boolean) as string[])];
+  if (!modelosCache.length) modelosCache = ["gemini-flash-latest"];
+  console.log("Modelos Gemini:", modelosCache.join(", "));
+  return modelosCache;
 }
-function llamarGemini(modelo: string, body: unknown) {
-  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
-    method: "POST", headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// Llama a Gemini; si un modelo está saturado (429/500/503), reintenta y después prueba el siguiente
+async function llamarGemini(body: unknown): Promise<Response> {
+  const modelos = await modelosGemini();
+  let ultima: Response | null = null;
+  for (const modelo of modelos) {
+    for (let intento = 0; intento < 2; intento++) {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
+        method: "POST", headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (![429, 500, 503].includes(r.status)) return r;
+      console.warn("Gemini", modelo, r.status, (await r.text()).slice(0, 200));
+      ultima = r;
+      if (r.status === 429) break; // límite de ese modelo: probar el siguiente
+      await esperar(1200 * (intento + 1));
+    }
+  }
+  return ultima ?? new Response("sin modelos", { status: 503 });
 }
 
 Deno.serve(async (req) => {
@@ -238,7 +253,6 @@ Deno.serve(async (req) => {
 
   // ---------- Gemini (gratis con la clave de Google AI Studio, sin facturación activada) ----------
   async function conGemini(): Promise<Response> {
-    const modelo = await modeloGemini();
     const contents: any[] = hist.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
     const ultimo = contents[contents.length - 1];
     if (abierto) {
@@ -248,7 +262,7 @@ Deno.serve(async (req) => {
     }
     const tools = [{ functionDeclarations: TOOLS.map((t) => ({ name: t.name, description: t.description, parameters: t.input_schema })) }];
     for (let vuelta = 0; vuelta < 6; vuelta++) {
-      let r = await llamarGemini(modelo, { systemInstruction: { parts: [{ text: sistema(materias) }] }, contents, tools,
+      let r = await llamarGemini({ systemInstruction: { parts: [{ text: sistema(materias) }] }, contents, tools,
         generationConfig: { maxOutputTokens: 8192 } });
       if (r.status === 400 && contents.some((c) => c.parts.some((p: any) => p.functionResponse) && c.parts.some((p: any) => p.inlineData))) {
         // Algunos modelos no aceptan el PDF junto a la respuesta de la herramienta: se manda en un mensaje aparte
@@ -260,10 +274,11 @@ Deno.serve(async (req) => {
             contents.splice(k + 1, 0, { role: "user", parts: [{ text: "PDF pedido:" }, ...inl] });
           }
         }
-        r = await llamarGemini(modelo, { systemInstruction: { parts: [{ text: sistema(materias) }] }, contents, tools,
+        r = await llamarGemini({ systemInstruction: { parts: [{ text: sistema(materias) }] }, contents, tools,
           generationConfig: { maxOutputTokens: 8192 } });
       }
       if (r.status === 429) return resp({ error: "La IA gratis llegó a su límite por ahora. Probá en un rato." }, 429);
+      if (r.status === 503 || r.status === 500) return resp({ error: "La IA gratis de Google está saturada en este momento. Probá de nuevo en un minuto." }, 429);
       if (!r.ok) { console.error("Gemini", r.status, await r.text()); return resp({ error: "Hubo un error con la IA. Probá de nuevo." }, 502); }
       const j = await r.json();
       const cand = j.candidates?.[0];
